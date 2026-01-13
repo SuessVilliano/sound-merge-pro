@@ -17,16 +17,16 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
-        }
+        },
+        extensions: ['.tsx', '.ts', '.jsx', '.js']
       },
       build: {
         rollupOptions: {
+          input: {
+            main: path.resolve(__dirname, 'index.html')
+          },
           external: [
             '@google/genai',
-            'react',
-            'react-dom',
-            'react-dom/client',
-            'react/jsx-runtime',
             'lucide-react',
             'recharts',
             'react-markdown',
@@ -37,7 +37,15 @@ export default defineConfig(({ mode }) => {
             'firebase/analytics',
             '@solana/web3.js',
             '@metaplex-foundation/js'
-          ]
+          ],
+          output: {
+            format: 'es',
+            preserveModules: false,
+            globals: {
+              'react': 'React',
+              'react-dom': 'ReactDOM'
+            }
+          }
         }
       }
     };

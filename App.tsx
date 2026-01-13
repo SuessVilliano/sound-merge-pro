@@ -7,7 +7,7 @@ import {
 } from './constants';
 // Fixed: parseRawBrief does not exist in geminiService, using parseBriefToSchema instead
 import { parseBriefToSchema } from './services/geminiService';
-import { authService } from '../services/authService';
+import { authService } from './services/authService';
 import { dataService } from './services/dataService';
 import { webhookService } from './services/webhookService';
 import { Opportunity, User as UserType, Stats, StaffMessage, DistributionSubmission } from './types';
