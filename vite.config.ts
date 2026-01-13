@@ -18,6 +18,27 @@ export default defineConfig(({ mode }) => {
         alias: {
           '@': path.resolve(__dirname, '.'),
         }
+      },
+      build: {
+        rollupOptions: {
+          external: [
+            '@google/genai',
+            'react',
+            'react-dom',
+            'react-dom/client',
+            'react/jsx-runtime',
+            'lucide-react',
+            'recharts',
+            'react-markdown',
+            'date-fns',
+            'firebase/app',
+            'firebase/auth',
+            'firebase/firestore',
+            'firebase/analytics',
+            '@solana/web3.js',
+            '@metaplex-foundation/js'
+          ]
+        }
       }
     };
 });
