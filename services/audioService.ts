@@ -1,5 +1,5 @@
 
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenerativeAI } from "@google/generative-ai";
 import { KitsVoiceModel, StemResult } from '../types';
 
 export interface GeneratedTrack {
@@ -24,7 +24,7 @@ const KITS_BASE_URL = "https://arpeggi.io/api/kits/v1";
 const getAiClient = () => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) return null;
-  return new GoogleGenAI({ apiKey });
+  return new GoogleGenerativeAI(apiKey);
 };
 
 // --- JOB QUEUE UTILITY ---

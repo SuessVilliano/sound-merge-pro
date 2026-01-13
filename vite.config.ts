@@ -17,6 +17,7 @@ export default defineConfig(({ mode }) => {
       resolve: {
         alias: {
           '@': path.resolve(__dirname, '.'),
+          '@google/genai': '@google/generative-ai'
         },
         extensions: ['.tsx', '.ts', '.jsx', '.js']
       },
@@ -26,26 +27,9 @@ export default defineConfig(({ mode }) => {
             main: path.resolve(__dirname, 'index.html')
           },
           external: [
-            '@google/genai',
-            'lucide-react',
-            'recharts',
-            'react-markdown',
-            'date-fns',
-            'firebase/app',
-            'firebase/auth',
-            'firebase/firestore',
-            'firebase/analytics',
             '@solana/web3.js',
             '@metaplex-foundation/js'
-          ],
-          output: {
-            format: 'es',
-            preserveModules: false,
-            globals: {
-              'react': 'React',
-              'react-dom': 'ReactDOM'
-            }
-          }
+          ]
         }
       }
     };
