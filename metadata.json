@@ -1,0 +1,10 @@
+
+{
+  "name": "Sound Merge Pro",
+  "description": "Institutional Music Infrastructure: AI-powered sync licensing, global distribution, and VoiceShield™ biometric protection.",
+  "requestFramePermissions": [
+    "microphone",
+    "camera",
+    "geolocation"
+  ]
+}
