@@ -8,6 +8,7 @@ import { User, MusicWork, WorkSplit, RightsRegistryId, RegistrationStatus, Regis
 import { RIGHTS_REGISTRIES, CAREER_STAGES } from '../constants';
 import { dataService } from '../services/dataService';
 import { FindSongsModal } from './FindSongsModal';
+import { IndustryLinks } from './IndustryLinks';
 
 const STATUS_FLOW: RegistrationStatus[] = ['not_started', 'data_ready', 'submitted', 'confirmed'];
 
@@ -811,6 +812,8 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
           </div>
         </div>
       )}
+
+      <IndustryLinks />
 
       {formOpen && (
         <WorkFormModal

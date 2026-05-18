@@ -349,6 +349,43 @@ export const CAREER_STAGES = [
   },
 ];
 
+/**
+ * INDUSTRY QUICK LINKS
+ * External platforms an artist needs across the rights, sampling and
+ * release journey. Surfaced in the Rights Hub and the AI Studio.
+ */
+export const INDUSTRY_LINKS = [
+  {
+    category: 'Rights & Royalties',
+    blurb: 'Register your works and collect what you are owed.',
+    links: [
+      { name: 'U.S. Copyright Office', url: 'https://www.copyright.gov/', description: 'Register legal authorship of your songs.' },
+      { name: 'The MLC', url: 'https://www.themlc.com/', description: 'Collect US mechanical streaming royalties.' },
+      { name: 'SoundExchange', url: 'https://www.soundexchange.com/', description: 'Digital + satellite radio performance royalties.' },
+      { name: 'ASCAP', url: 'https://www.ascap.com/', description: 'Performing rights organization.' },
+      { name: 'BMI', url: 'https://www.bmi.com/', description: 'Performing rights organization — free for writers.' },
+      { name: 'SESAC', url: 'https://www.sesac.com/', description: 'Performing rights organization — invite only.' },
+    ],
+  },
+  {
+    category: 'Samples & Sounds',
+    blurb: 'Source cleared samples you can release without legal risk.',
+    links: [
+      { name: 'Splice', url: 'https://splice.com/', description: 'Millions of royalty-cleared samples, loops and presets.' },
+      { name: 'Tracklib', url: 'https://www.tracklib.com/', description: 'License real, recognizable music to sample legally.' },
+    ],
+  },
+  {
+    category: 'Artist Platforms',
+    blurb: 'Claim and manage your presence where fans listen.',
+    links: [
+      { name: 'Spotify for Artists', url: 'https://artists.spotify.com/', description: 'Claim your profile and read streaming data.' },
+      { name: 'Apple Music for Artists', url: 'https://artists.apple.com/', description: 'Manage your Apple Music presence and stats.' },
+      { name: 'YouTube Studio', url: 'https://studio.youtube.com/', description: 'Manage your channel and Content ID.' },
+    ],
+  },
+];
+
 export const DISTRIBUTION_PARTNERS = [
   { name: 'Spotify', icon: 'Music' },
   { name: 'Apple Music', icon: 'Music' },

@@ -8,8 +8,9 @@ import {
     Share, Sparkle, RefreshCw, Shield, MoreVertical, Layers, Scissors, Upload,
     Volume2, Waves, FileOutput, Bot, Brain, AudioLines, Target, TrendingUp,
     Clapperboard, Video, Film, Star, AlertTriangle, UserCircle, Move, Expand,
-    Camera, Languages, FastForward, Image as ImageIcon
+    Camera, Languages, FastForward, Image as ImageIcon, ExternalLink
 } from 'lucide-react';
+import { INDUSTRY_LINKS } from '../constants';
 import { musicGenService, MusicEngine, ForgeOptions } from '../services/musicGenService';
 import { separateAudioWithKits } from '../services/audioService';
 import { klingService, KlingMode, KlingConfig } from '../services/klingService';
@@ -314,6 +315,23 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
                         ) : (
                             <textarea value={simplePrompt} onChange={(e) => setSimplePrompt(e.target.value)} placeholder="Describe the track you want to create in natural language..." className="w-full h-64 bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white resize-none outline-none focus:border-indigo-500" />
                         )}
+
+                        <div className="bg-slate-950 border border-slate-800 rounded-xl p-4">
+                            <div className="flex items-center gap-2 mb-1">
+                                <Layers className="w-3.5 h-3.5 text-cyan-400" />
+                                <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">Sample Libraries</span>
+                            </div>
+                            <p className="text-[10px] text-slate-500 mb-3">Pull royalty-cleared samples into your session.</p>
+                            <div className="grid grid-cols-2 gap-2">
+                                {INDUSTRY_LINKS.find(g => g.category === 'Samples & Sounds')?.links.map(link => (
+                                    <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer"
+                                       className="flex items-center justify-between gap-2 bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 hover:border-cyan-500/50 transition-colors">
+                                        <span className="text-[11px] font-bold text-white">{link.name}</span>
+                                        <ExternalLink className="w-3 h-3 text-slate-500" />
+                                    </a>
+                                ))}
+                            </div>
+                        </div>
                     </div>
                 )}
 
