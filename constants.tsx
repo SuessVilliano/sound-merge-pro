@@ -290,6 +290,65 @@ export const RIGHTS_REGISTRIES = [
   },
 ];
 
+/**
+ * CAREER STAGES
+ * Captured during onboarding to personalise the artist's registration
+ * roadmap inside the Rights Hub.
+ */
+export const CAREER_STAGES = [
+  {
+    id: 'hobbyist',
+    label: 'Hobbyist',
+    icon: 'Sprout',
+    tagline: 'Making music for the love of it.',
+    description: 'You write and record, mostly for yourself or a small audience. Releases are occasional.',
+    roadmap: [
+      { title: 'Copyright your first finished song', detail: 'A copyright registration is your legal proof of authorship — file it once a song is done.' },
+      { title: 'Join a free PRO as a writer', detail: 'BMI is free to join, so even occasional radio or playlist plays get tracked to you.' },
+      { title: 'Keep a clean record of your splits', detail: 'Note who wrote what now — it is far harder to reconstruct later.' },
+    ],
+  },
+  {
+    id: 'emerging',
+    label: 'Emerging Artist',
+    icon: 'Rocket',
+    tagline: 'Building toward your first real releases.',
+    description: 'You are preparing to release and want your rights set up correctly from day one.',
+    roadmap: [
+      { title: 'Join a PRO and register every work', detail: 'Performance royalties only reach you once each song is registered with your PRO.' },
+      { title: 'Register your compositions with The MLC', detail: 'The MLC pays mechanical royalties from US streams — register before your release goes live.' },
+      { title: 'Copyright each song before release', detail: 'Filing before publication strengthens your legal position.' },
+      { title: 'Lock in songwriter splits in writing', detail: 'Confirm shares with every collaborator before the song is out.' },
+    ],
+  },
+  {
+    id: 'releasing',
+    label: 'Active Releasing Artist',
+    icon: 'Radio',
+    tagline: 'Putting music out on a regular schedule.',
+    description: 'You release consistently and need every new work registered across all bodies.',
+    roadmap: [
+      { title: 'Run the full registration stack on every release', detail: 'Copyright, PRO, The MLC and SoundExchange — each new song should clear all four.' },
+      { title: 'Register recordings with SoundExchange', detail: 'Digital and satellite radio royalties for your masters are collected here.' },
+      { title: 'Confirm splits before each release date', detail: 'Use the split editor so shares total 100% before the song ships.' },
+      { title: 'Track filing status so nothing slips', detail: 'Mark each registry Submitted, then Confirmed, as you go.' },
+    ],
+  },
+  {
+    id: 'catalog',
+    label: 'Established Catalog',
+    icon: 'Library',
+    tagline: 'A back catalog that needs cleaning up.',
+    description: 'You have a body of work — some of it may be unregistered or registered incompletely.',
+    roadmap: [
+      { title: 'Import your full catalog with Find My Songs', detail: 'Pull every release tied to your name into the Hub so nothing is missed.' },
+      { title: 'Audit each work against all four registries', detail: 'Older songs are often missing from the MLC or SoundExchange.' },
+      { title: 'Reconcile splits and publisher info', detail: 'Fix any work whose shares do not total 100% or is missing a publisher.' },
+      { title: 'Chase down unclaimed royalties', detail: 'Registering back catalog with the MLC and SoundExchange can surface money already owed to you.' },
+    ],
+  },
+];
+
 export const DISTRIBUTION_PARTNERS = [
   { name: 'Spotify', icon: 'Music' },
   { name: 'Apple Music', icon: 'Music' },

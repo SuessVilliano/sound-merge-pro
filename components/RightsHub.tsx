@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   ShieldCheck, FileCheck2, Radio, Scale, Stamp, Copy, Check, ExternalLink, Plus, X,
   Music2, ChevronDown, Trophy, Pencil, Trash2, AlertTriangle, Sparkles, ClipboardCheck,
-  Lock, Info, ArrowRight, CircleDashed, Search
+  Lock, Info, ArrowRight, CircleDashed, Search, Sprout, Rocket, Library
 } from 'lucide-react';
 import { User, MusicWork, WorkSplit, RightsRegistryId, RegistrationStatus, RegistrationState, DiscoveredSong } from '../types';
-import { RIGHTS_REGISTRIES } from '../constants';
+import { RIGHTS_REGISTRIES, CAREER_STAGES } from '../constants';
 import { dataService } from '../services/dataService';
 import { FindSongsModal } from './FindSongsModal';
 
@@ -473,6 +473,79 @@ const WorkFormModal: React.FC<WorkFormModalProps> = ({ user, editing, onSave, on
   );
 };
 
+const STAGE_ICON: Record<string, any> = { Sprout, Rocket, Radio, Library };
+
+const RoadmapCard: React.FC<{ user: User; onFindSongs: () => void; onAddWork: () => void }> = ({ user, onFindSongs, onAddWork }) => {
+  const [stageId, setStageId] = useState<string | undefined>(
+    () => user.careerStage || localStorage.getItem('sf_career_stage') || undefined
+  );
+  const [picking, setPicking] = useState(false);
+  const stage = CAREER_STAGES.find(s => s.id === stageId);
+
+  const choose = (id: string) => {
+    setStageId(id);
+    try { localStorage.setItem('sf_career_stage', id); } catch (e) { /* storage unavailable */ }
+    setPicking(false);
+  };
+
+  if (!stage || picking) {
+    return (
+      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6">
+        <h2 className="font-black text-lg text-slate-900 dark:text-white">Personalize your roadmap</h2>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Tell us where you are and we'll order your registration priorities.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {CAREER_STAGES.map(s => {
+            const Icon = STAGE_ICON[s.icon] || Sparkles;
+            return (
+              <button key={s.id} onClick={() => choose(s.id)}
+                className={`text-left rounded-2xl border p-4 transition-colors ${stageId === s.id ? 'border-cyan-500 bg-cyan-500/5' : 'border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700'}`}>
+                <Icon className="w-5 h-5 text-cyan-500 mb-2" />
+                <div className="font-black text-sm text-slate-900 dark:text-white">{s.label}</div>
+                <div className="text-[11px] text-slate-500 dark:text-slate-400">{s.tagline}</div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  const Icon = STAGE_ICON[stage.icon] || Sparkles;
+  return (
+    <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6">
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-cyan-500/10"><Icon className="w-5 h-5 text-cyan-600 dark:text-cyan-400" /></div>
+          <div>
+            <h2 className="font-black text-base text-slate-900 dark:text-white">Your Roadmap · {stage.label}</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{stage.tagline}</p>
+          </div>
+        </div>
+        <button onClick={() => setPicking(true)} className="text-[11px] font-bold text-slate-400 hover:text-cyan-500 shrink-0">Change</button>
+      </div>
+      <ol className="space-y-2.5">
+        {stage.roadmap.map((item, i) => (
+          <li key={i} className="flex gap-3">
+            <span className="shrink-0 w-6 h-6 rounded-full bg-gradient-to-tr from-cyan-500 to-teal-500 text-white text-[11px] font-black flex items-center justify-center">{i + 1}</span>
+            <div>
+              <div className="text-sm font-bold text-slate-900 dark:text-white">{item.title}</div>
+              <div className="text-xs text-slate-500 dark:text-slate-400">{item.detail}</div>
+            </div>
+          </li>
+        ))}
+      </ol>
+      <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t border-slate-100 dark:border-slate-800">
+        <button onClick={onFindSongs} className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:opacity-90">
+          <Search className="w-3.5 h-3.5" />Find My Songs
+        </button>
+        <button onClick={onAddWork} className="flex items-center gap-1.5 text-xs font-bold px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700">
+          <Plus className="w-3.5 h-3.5" />Add a Work
+        </button>
+      </div>
+    </div>
+  );
+};
+
 export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
   const [works, setWorks] = useState<MusicWork[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -606,6 +679,8 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
           </p>
         </div>
       </div>
+
+      <RoadmapCard user={user} onFindSongs={() => setFindOpen(true)} onAddWork={openAdd} />
 
       {works.length === 0 ? (
         <div className="rounded-3xl border-2 border-dashed border-slate-200 dark:border-slate-800 p-12 text-center">

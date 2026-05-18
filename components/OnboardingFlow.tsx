@@ -4,12 +4,14 @@ import {
     Zap, Globe, Shield, Mic2, Star, LayoutDashboard, Loader2, X, MessageSquare, Users,
     Radio, Camera, Instagram, Facebook, Twitter, Link as LinkIcon, Save, Sparkles, Server,
     FileText, PenTool, ImagePlus, Check, Building2, Users2, Youtube, Video, Globe2, Linkedin, Chrome,
-    ChevronRight, Search, Heart, Signal, Activity, RefreshCw
+    ChevronRight, Search, Heart, Signal, Activity, RefreshCw, Sprout, Rocket, Library
 } from 'lucide-react';
 import { User } from '../types';
-import { VIEWS } from '../constants';
+import { VIEWS, CAREER_STAGES } from '../constants';
 import { LegalOnboarding } from './LegalOnboarding';
 import { RapidApiAgent } from '../services/rapidApiService';
+
+const STAGE_ICONS: Record<string, any> = { Sprout, Rocket, Radio, Library };
 
 interface OnboardingFlowProps {
     user: User;
@@ -17,11 +19,12 @@ interface OnboardingFlowProps {
     onDismiss: () => void;
 }
 
-type Step = 'welcome' | 'role' | 'search' | 'legal' | 'identity' | 'visual-assets' | 'socials' | 'core-activation' | 'staff' | 'processing';
+type Step = 'welcome' | 'role' | 'stage' | 'search' | 'legal' | 'identity' | 'visual-assets' | 'socials' | 'core-activation' | 'staff' | 'processing';
 
 export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete, onDismiss }) => {
     const [step, setStep] = useState<Step>('welcome');
     const [role, setRole] = useState<User['role']>('artist');
+    const [careerStage, setCareerStage] = useState<User['careerStage']>(user.careerStage);
     const [selectedStaff, setSelectedStaff] = useState<string[]>(['mgr', 'mkt', 'dst']);
     
     // Search Artist State
@@ -43,13 +46,14 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
     const [selectedYtChannel, setSelectedYtChannel] = useState<any | null>(null);
 
     // Social State
-    const [socials, setSocials] = useState({ 
-        instagram: '', 
-        twitter: '', 
-        spotify: '', 
-        youtube: '', 
-        tiktok: '', 
-        linkedin: '' 
+    const [socials, setSocials] = useState({
+        instagram: '',
+        twitter: '',
+        spotify: '',
+        youtube: '',
+        tiktok: '',
+        linkedin: '',
+        website: ''
     });
 
     const [processingStep, setProcessingStep] = useState(0);
@@ -123,6 +127,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
                 onboardingCompleted: true,
                 tourCompleted: false,
                 role,
+                careerStage,
                 bio,
                 location,
                 displayName: selectedArtist?.name || user.displayName,
@@ -182,7 +187,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
                 ].map((option) => (
                     <button
                         key={option.id}
-                        onClick={() => { setRole(option.id as any); setStep('search'); }}
+                        onClick={() => { setRole(option.id as any); setStep('stage'); }}
                         className="bg-white dark:bg-slate-900 hover:border-cyan-500 border-2 border-slate-200 dark:border-slate-800 p-10 rounded-[3rem] text-left group transition-all shadow-sm hover:shadow-2xl"
                     >
                         <div className="bg-slate-100 dark:bg-slate-950 w-20 h-20 rounded-3xl flex items-center justify-center mb-8 group-hover:bg-cyan-500/10 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
@@ -192,6 +197,37 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
                         <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{option.desc}</p>
                     </button>
                 ))}
+            </div>
+        </div>
+    );
+
+    const renderStage = () => (
+        <div className="animate-in fade-in slide-in-from-right-8 duration-500 max-w-4xl mx-auto py-10">
+            <h2 className="text-4xl md:text-6xl font-display font-black text-slate-900 dark:text-white mb-3 text-center uppercase tracking-tighter italic">Your Stage</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-center mb-12 text-lg font-medium">Where are you in your career? We tailor your rights & registration roadmap to match.</p>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {CAREER_STAGES.map((stage) => {
+                    const Icon = STAGE_ICONS[stage.icon] || Star;
+                    return (
+                        <button
+                            key={stage.id}
+                            onClick={() => { setCareerStage(stage.id as User['careerStage']); setStep('search'); }}
+                            className="bg-white dark:bg-slate-900 hover:border-cyan-500 border-2 border-slate-200 dark:border-slate-800 p-8 rounded-[2.5rem] text-left group transition-all shadow-sm hover:shadow-2xl"
+                        >
+                            <div className="flex items-center gap-4 mb-4">
+                                <div className="bg-slate-100 dark:bg-slate-950 w-16 h-16 rounded-2xl flex items-center justify-center group-hover:bg-cyan-500/10 transition-colors shrink-0">
+                                    <Icon className="w-8 h-8 text-slate-400 group-hover:text-cyan-600 dark:group-hover:text-cyan-400" />
+                                </div>
+                                <div>
+                                    <h3 className="font-display font-black text-xl text-slate-900 dark:text-white uppercase tracking-tight italic">{stage.label}</h3>
+                                    <p className="text-xs text-cyan-600 dark:text-cyan-400 font-bold">{stage.tagline}</p>
+                                </div>
+                            </div>
+                            <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed font-medium">{stage.description}</p>
+                        </button>
+                    );
+                })}
             </div>
         </div>
     );
@@ -469,6 +505,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
             <div className="w-full max-w-6xl">
                 {step === 'welcome' && renderWelcome()}
                 {step === 'role' && renderRole()}
+                {step === 'stage' && renderStage()}
                 {step === 'search' && renderSearch()}
                 
                 {step === 'legal' && (
