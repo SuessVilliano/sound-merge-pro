@@ -1,5 +1,6 @@
 
 import { auth } from './firebase';
+import { DiscoveredSong } from '../types';
 
 // Point to the secure internal proxy rather than the RapidAPI hosts directly
 const PROXY_BASE = "/api/sync";
@@ -13,6 +14,35 @@ export interface BillboardEntry {
     peak_position: number;
     weeks_on_chart: number;
 }
+
+const SAMPLE_TITLES = [
+    'Midnight Signal', 'Golden Hour', 'Paper Crowns', 'Lowlight',
+    'Afterglow', 'Static Bloom', 'Coastline', 'Even Keel',
+];
+const SAMPLE_SOURCES: DiscoveredSong['source'][] = ['Spotify', 'Apple Music', 'YouTube', 'Deezer'];
+
+/**
+ * Fallback discovery set, used when the live platform proxy is unreachable
+ * (no API key configured, or running outside the deployed environment).
+ */
+const sampleDiscovery = (artistName: string): DiscoveredSong[] => {
+    const thisYear = new Date().getFullYear();
+    return SAMPLE_TITLES.map((title, i) => {
+        const year = thisYear - (i % 4);
+        return {
+            id: `sample_${i}_${title.replace(/\s+/g, '').toLowerCase()}`,
+            title,
+            artist: artistName,
+            album: i % 2 === 0 ? `${title} (Single)` : 'Selected Works',
+            image: `https://ui-avatars.com/api/?name=${encodeURIComponent(title)}&background=0f172a&color=22d3ee&size=200`,
+            durationMs: (165 + i * 11) * 1000,
+            year: String(year),
+            releaseDate: `${year}-0${(i % 8) + 1}-15`,
+            source: SAMPLE_SOURCES[i % SAMPLE_SOURCES.length],
+            isSample: true,
+        };
+    });
+};
 
 export const RapidApiAgent = {
     
@@ -81,6 +111,40 @@ export const RapidApiAgent = {
             subscribers: Math.floor(Math.random() * 500000),
             source: 'YouTube'
         })) || [];
+    },
+
+    /**
+     * SEARCH TRACKS BY ARTIST
+     * Discovers songs tied to an artist across platform signals so they can
+     * be checked off and imported into the Rights Hub.
+     */
+    async searchTracksByArtist(artistName: string): Promise<DiscoveredSong[]> {
+        const name = (artistName || '').trim();
+        if (name.length < 2) return [];
+
+        const data = await this.fetchFromProxy(`/spotify-search?q=${encodeURIComponent(name)}&type=tracks`);
+        const items = data?.tracks?.items;
+
+        if (Array.isArray(items) && items.length > 0) {
+            const mapped: DiscoveredSong[] = items.map((item: any) => {
+                const t = item?.data || item || {};
+                const album = t.albumOfTrack || {};
+                const trackId = t.id || (typeof t.uri === 'string' ? t.uri.split(':').pop() : '') || `sp_${Math.random().toString(36).slice(2, 9)}`;
+                return {
+                    id: `sp_${trackId}`,
+                    title: t.name || '',
+                    artist: t.artists?.items?.[0]?.profile?.name || name,
+                    album: album.name,
+                    image: album.coverArt?.sources?.[0]?.url,
+                    durationMs: t.duration?.totalMilliseconds,
+                    source: 'Spotify' as const,
+                    externalUrl: trackId ? `https://open.spotify.com/track/${trackId}` : undefined,
+                };
+            }).filter((s: DiscoveredSong) => !!s.title);
+            if (mapped.length > 0) return mapped;
+        }
+
+        return sampleDiscovery(name);
     },
 
     /**

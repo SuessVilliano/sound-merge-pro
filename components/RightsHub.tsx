@@ -2,11 +2,12 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   ShieldCheck, FileCheck2, Radio, Scale, Stamp, Copy, Check, ExternalLink, Plus, X,
   Music2, ChevronDown, Trophy, Pencil, Trash2, AlertTriangle, Sparkles, ClipboardCheck,
-  Lock, Info, ArrowRight, CircleDashed
+  Lock, Info, ArrowRight, CircleDashed, Search
 } from 'lucide-react';
-import { User, MusicWork, WorkSplit, RightsRegistryId, RegistrationStatus, RegistrationState } from '../types';
+import { User, MusicWork, WorkSplit, RightsRegistryId, RegistrationStatus, RegistrationState, DiscoveredSong } from '../types';
 import { RIGHTS_REGISTRIES } from '../constants';
 import { dataService } from '../services/dataService';
+import { FindSongsModal } from './FindSongsModal';
 
 const STATUS_FLOW: RegistrationStatus[] = ['not_started', 'data_ready', 'submitted', 'confirmed'];
 
@@ -479,6 +480,7 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
   const [openRegistry, setOpenRegistry] = useState<RightsRegistryId | null>(null);
   const [formOpen, setFormOpen] = useState(false);
   const [editingWork, setEditingWork] = useState<MusicWork | null>(null);
+  const [findOpen, setFindOpen] = useState(false);
 
   useEffect(() => {
     const stored = dataService.getRightsWorks(user.uid).map(normalizeWork);
@@ -538,6 +540,31 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
     }));
   };
 
+  const importSongs = (songs: DiscoveredSong[]) => {
+    if (songs.length === 0) return;
+    const now = Date.now();
+    const created: MusicWork[] = songs.map((song, i) => {
+      const base = newWork(user.uid, song.artist || user.displayName || '');
+      const durMs = song.durationMs || 0;
+      const year = song.year || (song.releaseDate ? song.releaseDate.slice(0, 4) : base.creationYear);
+      return {
+        ...base,
+        id: `work_${now}_${i}`,
+        title: song.title,
+        artist: song.artist || user.displayName || '',
+        image: song.image,
+        isrc: song.isrc,
+        duration: durMs ? `${Math.floor(durMs / 60000)}:${String(Math.floor((durMs % 60000) / 1000)).padStart(2, '0')}` : undefined,
+        releaseDate: song.releaseDate,
+        isReleased: !!(song.releaseDate || song.year),
+        creationYear: year,
+      };
+    });
+    setWorks(prev => [...created, ...prev]);
+    setSelectedId(created[0].id);
+    setFindOpen(false);
+  };
+
   const openAdd = () => { setEditingWork(null); setFormOpen(true); };
   const openEdit = (w: MusicWork) => { setEditingWork(w); setFormOpen(true); };
 
@@ -585,11 +612,17 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
           <div className="inline-flex p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 mb-4"><Music2 className="w-8 h-8 text-cyan-500" /></div>
           <h3 className="font-black text-lg text-slate-900 dark:text-white">Add your first work</h3>
           <p className="text-sm text-slate-500 dark:text-slate-400 max-w-sm mx-auto mt-1 mb-5">
-            Start with one song. We'll show you exactly what each registry needs and track every filing for you.
+            Find songs already tied to your name across the platforms, or add one by hand. We'll show you
+            exactly what each registry needs and track every filing for you.
           </p>
-          <button onClick={openAdd} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:opacity-90">
-            <Plus className="w-4 h-4" />Add a Work
-          </button>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <button onClick={() => setFindOpen(true)} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-gradient-to-r from-cyan-500 to-teal-500 text-white hover:opacity-90">
+              <Search className="w-4 h-4" />Find My Songs
+            </button>
+            <button onClick={openAdd} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700">
+              <Plus className="w-4 h-4" />Add Manually
+            </button>
+          </div>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -597,9 +630,14 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
           <div className="lg:col-span-4 space-y-3">
             <div className="flex items-center justify-between">
               <h2 className="font-black text-sm uppercase tracking-wider text-slate-700 dark:text-slate-300">Your Works</h2>
-              <button onClick={openAdd} className="flex items-center gap-1 text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline">
-                <Plus className="w-4 h-4" />Add
-              </button>
+              <div className="flex items-center gap-3">
+                <button onClick={() => setFindOpen(true)} className="flex items-center gap-1 text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline">
+                  <Search className="w-4 h-4" />Find
+                </button>
+                <button onClick={openAdd} className="flex items-center gap-1 text-xs font-bold text-cyan-600 dark:text-cyan-400 hover:underline">
+                  <Plus className="w-4 h-4" />Add
+                </button>
+              </div>
             </div>
             {works.map(w => {
               const confirmed = Object.values(w.registrations).filter(r => r.status === 'confirmed').length;
@@ -607,11 +645,18 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
               return (
                 <button key={w.id} onClick={() => setSelectedId(w.id)}
                   className={`w-full text-left rounded-2xl border p-4 transition-colors ${selectedId === w.id ? 'border-cyan-500 bg-cyan-500/5' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'}`}>
-                  <div className="flex items-center gap-2">
-                    <h3 className="flex-1 font-black text-sm text-slate-900 dark:text-white truncate">{w.title || 'Untitled work'}</h3>
-                    {isFull && <Trophy className="w-4 h-4 text-amber-500 shrink-0" />}
+                  <div className="flex items-center gap-3">
+                    {w.image
+                      ? <img src={w.image} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0" />
+                      : <div className="w-10 h-10 rounded-lg bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0"><Music2 className="w-4 h-4 text-slate-400" /></div>}
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="flex-1 font-black text-sm text-slate-900 dark:text-white truncate">{w.title || 'Untitled work'}</h3>
+                        {isFull && <Trophy className="w-4 h-4 text-amber-500 shrink-0" />}
+                      </div>
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{w.artist}</p>
+                    </div>
                   </div>
-                  <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate">{w.artist}</p>
                   <div className="flex items-center gap-1 mt-3">
                     {RIGHTS_REGISTRIES.map(r => {
                       const reg = w.registrations[r.id as RightsRegistryId];
@@ -630,9 +675,14 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
               <div className="space-y-4">
                 <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5">
                   <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <h2 className="font-black text-xl text-slate-900 dark:text-white truncate">{selected.title || 'Untitled work'}</h2>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">{selected.artist}</p>
+                    <div className="flex items-center gap-3 min-w-0">
+                      {selected.image
+                        ? <img src={selected.image} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
+                        : <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0"><Music2 className="w-5 h-5 text-slate-400" /></div>}
+                      <div className="min-w-0">
+                        <h2 className="font-black text-xl text-slate-900 dark:text-white truncate">{selected.title || 'Untitled work'}</h2>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">{selected.artist}</p>
+                      </div>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
                       <button onClick={() => openEdit(selected)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400"><Pencil className="w-4 h-4" /></button>
@@ -693,6 +743,15 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
           editing={editingWork}
           onSave={saveWork}
           onClose={() => { setFormOpen(false); setEditingWork(null); }}
+        />
+      )}
+
+      {findOpen && (
+        <FindSongsModal
+          user={user}
+          existingWorks={works}
+          onImport={importSongs}
+          onClose={() => setFindOpen(false)}
         />
       )}
     </div>

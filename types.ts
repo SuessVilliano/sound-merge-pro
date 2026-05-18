@@ -519,6 +519,7 @@ export interface MusicWork {
   title: string;
   alternateTitle?: string;
   artist: string;
+  image?: string;
   iswc?: string;
   isrc?: string;
   upc?: string;
@@ -535,4 +536,19 @@ export interface MusicWork {
   registrations: Record<RightsRegistryId, RegistrationState>;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface DiscoveredSong {
+  id: string;
+  title: string;
+  artist: string;
+  album?: string;
+  image?: string;
+  isrc?: string;
+  durationMs?: number;
+  releaseDate?: string;
+  year?: string;
+  source: 'Spotify' | 'Apple Music' | 'YouTube' | 'Deezer';
+  externalUrl?: string;
+  isSample?: boolean;
 }
