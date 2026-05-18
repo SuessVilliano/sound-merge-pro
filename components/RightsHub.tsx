@@ -2,13 +2,15 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   ShieldCheck, FileCheck2, Radio, Scale, Stamp, Copy, Check, ExternalLink, Plus, X,
   Music2, ChevronDown, Trophy, Pencil, Trash2, AlertTriangle, Sparkles, ClipboardCheck,
-  Lock, Info, ArrowRight, CircleDashed, Search, Sprout, Rocket, Library
+  Lock, Info, ArrowRight, CircleDashed, Search, Sprout, Rocket, Library,
+  Activity, FileText, CheckCircle2, XCircle
 } from 'lucide-react';
 import { User, MusicWork, WorkSplit, RightsRegistryId, RegistrationStatus, RegistrationState, DiscoveredSong } from '../types';
 import { RIGHTS_REGISTRIES, CAREER_STAGES } from '../constants';
 import { dataService } from '../services/dataService';
 import { FindSongsModal } from './FindSongsModal';
 import { IndustryLinks } from './IndustryLinks';
+import { SplitSheetModal } from './SplitSheetModal';
 
 const STATUS_FLOW: RegistrationStatus[] = ['not_started', 'data_ready', 'submitted', 'confirmed'];
 
@@ -144,6 +146,79 @@ const buildPacket = (work: MusicWork, registryId: RightsRegistryId): { label: st
         { label: 'Duration', value: work.duration || '—' },
       ];
   }
+};
+
+interface HealthPart { key: string; label: string; got: number; max: number; }
+
+/** Scores how complete and protected a work is, out of 100. */
+const computeHealth = (w: MusicWork): { score: number; parts: HealthPart[] } => {
+  const metaFields = [w.title, w.isrc, w.iswc, w.duration, w.creationYear, w.recordLabel];
+  const metaGot = Math.round((metaFields.filter(f => !!(f && String(f).trim())).length / metaFields.length) * 25);
+
+  const lyricsGot = (w.isInstrumental || !!w.lyrics?.trim()) ? 10 : 0;
+
+  const writers = writersOf(w);
+  let splitsGot = 0;
+  if (writers.length > 0) splitsGot += 10;
+  if (w.splits.length > 0 && totalShare(w) === 100) splitsGot += 10;
+  if (writers.length > 0 && writers.every(s => s.ipi || s.proAffiliation)) splitsGot += 5;
+
+  let regGot = 0;
+  RIGHTS_REGISTRIES.forEach(r => {
+    const st = w.registrations[r.id as RightsRegistryId].status;
+    regGot += st === 'confirmed' ? 10 : st === 'submitted' ? 6 : st === 'data_ready' ? 3 : 0;
+  });
+
+  const parts: HealthPart[] = [
+    { key: 'meta', label: 'Metadata', got: metaGot, max: 25 },
+    { key: 'lyrics', label: 'Lyrics', got: lyricsGot, max: 10 },
+    { key: 'splits', label: 'Splits', got: splitsGot, max: 25 },
+    { key: 'reg', label: 'Registrations', got: regGot, max: 40 },
+  ];
+  return { score: parts.reduce((s, p) => s + p.got, 0), parts };
+};
+
+const scoreStyle = (score: number): { text: string; bg: string; label: string } => {
+  if (score >= 80) return { text: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/10', label: 'Strong' };
+  if (score >= 50) return { text: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-500/10', label: 'Needs Work' };
+  return { text: 'text-red-600 dark:text-red-400', bg: 'bg-red-500/10', label: 'At Risk' };
+};
+
+/** Finds problems in a work's songwriter splits. */
+const detectSplitIssues = (w: MusicWork): string[] => {
+  if (w.splits.length === 0) return ['No contributors listed — add the songwriters and any producers.'];
+  const issues: string[] = [];
+  if (writersOf(w).length === 0) issues.push('No songwriter/composer listed.');
+  const total = totalShare(w);
+  if (total !== 100) issues.push(`Splits total ${total}% — they must add up to exactly 100%.`);
+  const unnamed = w.splits.filter(s => !s.name.trim()).length;
+  if (unnamed > 0) issues.push(`${unnamed} contributor${unnamed > 1 ? 's are' : ' is'} missing a name.`);
+  const seen = new Map<string, number>();
+  w.splits.forEach(s => {
+    const k = s.name.trim().toLowerCase();
+    if (k) seen.set(k, (seen.get(k) || 0) + 1);
+  });
+  seen.forEach((count, name) => {
+    if (count > 1) issues.push(`Duplicate contributor "${name}" appears ${count} times.`);
+  });
+  const zero = w.splits.filter(s => (Number(s.share) || 0) <= 0).length;
+  if (zero > 0) issues.push(`${zero} contributor${zero > 1 ? 's have' : ' has'} a 0% share.`);
+  const writersNoId = writersOf(w).filter(s => s.name.trim() && !s.ipi && !s.proAffiliation);
+  if (writersNoId.length > 0) issues.push(`${writersNoId.length} writer${writersNoId.length > 1 ? 's are' : ' is'} missing an IPI number or PRO affiliation.`);
+  return issues;
+};
+
+/** The gate an artist should clear before sending a work to distribution. */
+const releaseChecklist = (w: MusicWork): { label: string; ok: boolean }[] => {
+  const splitIssues = detectSplitIssues(w);
+  const copyrightStatus = w.registrations.copyright_us.status;
+  return [
+    { label: 'Song title set', ok: !!w.title.trim() },
+    { label: w.isInstrumental ? 'Marked as instrumental' : 'Lyrics written out', ok: w.isInstrumental || !!w.lyrics?.trim() },
+    { label: 'ISRC assigned', ok: !!w.isrc?.trim() },
+    { label: 'Songwriter splits total 100% with no conflicts', ok: w.splits.length > 0 && splitIssues.length === 0 },
+    { label: 'Copyright filed (submitted or confirmed)', ok: copyrightStatus === 'submitted' || copyrightStatus === 'confirmed' },
+  ];
 };
 
 const CopyButton: React.FC<{ text: string; label?: string }> = ({ text, label }) => {
@@ -555,6 +630,7 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
   const [formOpen, setFormOpen] = useState(false);
   const [editingWork, setEditingWork] = useState<MusicWork | null>(null);
   const [findOpen, setFindOpen] = useState(false);
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   useEffect(() => {
     const stored = dataService.getRightsWorks(user.uid).map(normalizeWork);
@@ -574,16 +650,19 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
     let confirmed = 0;
     let inProgress = 0;
     let fullyDone = 0;
+    let healthSum = 0;
     works.forEach(w => {
       const regs = Object.values(w.registrations);
       const c = regs.filter(r => r.status === 'confirmed').length;
       confirmed += c;
       inProgress += regs.filter(r => r.status === 'submitted' || r.status === 'data_ready').length;
       if (c === RIGHTS_REGISTRIES.length) fullyDone += 1;
+      healthSum += computeHealth(w).score;
     });
     return {
       pct: totalSlots ? Math.round((confirmed / totalSlots) * 100) : 0,
       confirmed, inProgress, fullyDone, totalSlots,
+      avgHealth: works.length ? Math.round(healthSum / works.length) : 0,
     };
   }, [works]);
 
@@ -639,8 +718,18 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
     setFindOpen(false);
   };
 
+  const patchWork = (workId: string, patch: Partial<MusicWork>) => {
+    setWorks(prev => prev.map(w => w.id === workId ? { ...w, ...patch, updatedAt: new Date().toISOString() } : w));
+  };
+
   const openAdd = () => { setEditingWork(null); setFormOpen(true); };
   const openEdit = (w: MusicWork) => { setEditingWork(w); setFormOpen(true); };
+
+  const health = selected ? computeHealth(selected) : null;
+  const healthStyle = health ? scoreStyle(health.score) : null;
+  const splitIssues = selected ? detectSplitIssues(selected) : [];
+  const checklist = selected ? releaseChecklist(selected) : [];
+  const releaseReady = checklist.length > 0 && checklist.every(c => c.ok);
 
   return (
     <div className="space-y-6">
@@ -665,10 +754,11 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
                 <div className="text-[9px] font-black uppercase tracking-wider text-slate-400">Registered</div>
               </div>
             </div>
-            <div className="space-y-2">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-2">
               <div><div className="text-xl font-black text-slate-900 dark:text-white">{works.length}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Works</div></div>
               <div><div className="text-xl font-black text-green-600 dark:text-green-400">{portfolio.confirmed}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Confirmed</div></div>
               <div><div className="text-xl font-black text-amber-600 dark:text-amber-400">{portfolio.fullyDone}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Fully Filed</div></div>
+              <div><div className={`text-xl font-black ${scoreStyle(portfolio.avgHealth).text}`}>{portfolio.avgHealth}</div><div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Avg Health</div></div>
             </div>
           </div>
         </div>
@@ -718,6 +808,7 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
             {works.map(w => {
               const confirmed = Object.values(w.registrations).filter(r => r.status === 'confirmed').length;
               const isFull = confirmed === RIGHTS_REGISTRIES.length;
+              const cardHealth = computeHealth(w).score;
               return (
                 <button key={w.id} onClick={() => setSelectedId(w.id)}
                   className={`w-full text-left rounded-2xl border p-4 transition-colors ${selectedId === w.id ? 'border-cyan-500 bg-cyan-500/5' : 'border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700'}`}>
@@ -739,7 +830,10 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
                       return <div key={r.id} className={`flex-1 h-1.5 rounded-full ${STATUS_META[reg.status].dot}`} title={`${r.short}: ${STATUS_META[reg.status].label}`} />;
                     })}
                   </div>
-                  <div className="text-[10px] font-bold text-slate-400 mt-1.5">{confirmed} / {RIGHTS_REGISTRIES.length} registries confirmed</div>
+                  <div className="flex items-center justify-between mt-1.5">
+                    <span className="text-[10px] font-bold text-slate-400">{confirmed} / {RIGHTS_REGISTRIES.length} registries confirmed</span>
+                    <span className={`text-[10px] font-black px-1.5 py-0.5 rounded ${scoreStyle(cardHealth).bg} ${scoreStyle(cardHealth).text}`}>Health {cardHealth}</span>
+                  </div>
                 </button>
               );
             })}
@@ -756,13 +850,19 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
                         ? <img src={selected.image} alt="" className="w-12 h-12 rounded-xl object-cover shrink-0" />
                         : <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center shrink-0"><Music2 className="w-5 h-5 text-slate-400" /></div>}
                       <div className="min-w-0">
-                        <h2 className="font-black text-xl text-slate-900 dark:text-white truncate">{selected.title || 'Untitled work'}</h2>
+                        <div className="flex items-center gap-2">
+                          <h2 className="font-black text-xl text-slate-900 dark:text-white truncate">{selected.title || 'Untitled work'}</h2>
+                          {health && healthStyle && (
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded shrink-0 ${healthStyle.bg} ${healthStyle.text}`}>Health {health.score}</span>
+                          )}
+                        </div>
                         <p className="text-sm text-slate-500 dark:text-slate-400">{selected.artist}</p>
                       </div>
                     </div>
                     <div className="flex gap-1.5 shrink-0">
-                      <button onClick={() => openEdit(selected)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400"><Pencil className="w-4 h-4" /></button>
-                      <button onClick={() => deleteWork(selected.id)} className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
+                      <button onClick={() => setSheetOpen(true)} title="Split sheet" className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400"><FileText className="w-4 h-4" /></button>
+                      <button onClick={() => openEdit(selected)} title="Edit work" className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-cyan-600 dark:hover:text-cyan-400"><Pencil className="w-4 h-4" /></button>
+                      <button onClick={() => deleteWork(selected.id)} title="Delete work" className="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-red-500"><Trash2 className="w-4 h-4" /></button>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2 mt-3">
@@ -780,7 +880,72 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
                       Splits: {totalShare(selected)}%
                     </span>
                   </div>
+                  {selected.splits.length > 0 && (
+                    splitIssues.length === 0 ? (
+                      <div className="mt-3 flex items-center gap-1.5 text-[11px] font-bold text-green-600 dark:text-green-400">
+                        <CheckCircle2 className="w-3.5 h-3.5" />Splits verified — totals 100% with no conflicts
+                      </div>
+                    ) : (
+                      <div className="mt-3 rounded-xl bg-red-500/5 border border-red-500/20 p-3">
+                        <div className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-red-600 dark:text-red-400 mb-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5" />Split conflicts
+                        </div>
+                        <ul className="text-[11px] text-slate-600 dark:text-slate-300 space-y-0.5">
+                          {splitIssues.map((iss, i) => <li key={i} className="flex gap-1.5"><span className="text-red-500 shrink-0">·</span>{iss}</li>)}
+                        </ul>
+                      </div>
+                    )
+                  )}
                 </div>
+
+                {health && healthStyle && (
+                  <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-black text-sm text-slate-900 dark:text-white flex items-center gap-1.5">
+                        <Activity className="w-4 h-4 text-cyan-500" />Rights Health
+                      </h3>
+                      <span className={`text-sm font-black px-2.5 py-1 rounded-lg ${healthStyle.bg} ${healthStyle.text}`}>
+                        {health.score}/100 · {healthStyle.label}
+                      </span>
+                    </div>
+                    <div className="space-y-2">
+                      {health.parts.map(p => (
+                        <div key={p.key}>
+                          <div className="flex justify-between text-[11px] mb-0.5">
+                            <span className="font-bold text-slate-600 dark:text-slate-300">{p.label}</span>
+                            <span className="text-slate-400">{p.got}/{p.max}</span>
+                          </div>
+                          <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-cyan-500 to-teal-500 rounded-full transition-all duration-500" style={{ width: `${(p.got / p.max) * 100}%` }} />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Release Readiness</h4>
+                        <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded ${releaseReady ? 'bg-green-500/10 text-green-600 dark:text-green-400' : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'}`}>
+                          {releaseReady ? 'Cleared for release' : `${checklist.filter(c => !c.ok).length} to resolve`}
+                        </span>
+                      </div>
+                      <ul className="space-y-1">
+                        {checklist.map((c, i) => (
+                          <li key={i} className="flex items-center gap-2 text-xs">
+                            {c.ok
+                              ? <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0" />
+                              : <XCircle className="w-4 h-4 text-slate-300 dark:text-slate-600 shrink-0" />}
+                            <span className={c.ok ? 'text-slate-600 dark:text-slate-300' : 'text-slate-500 dark:text-slate-400'}>{c.label}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      {!releaseReady && (
+                        <p className="text-[11px] text-amber-600 dark:text-amber-400 mt-2 flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 shrink-0" />Resolve these before sending this work to distribution.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {Object.values(selected.registrations).every(r => r.status === 'confirmed') && (
                   <div className="rounded-2xl bg-gradient-to-r from-amber-500/10 to-cyan-500/10 border border-amber-500/30 p-4 flex items-center gap-3">
@@ -830,6 +995,14 @@ export const RightsHub: React.FC<{ user: User }> = ({ user }) => {
           existingWorks={works}
           onImport={importSongs}
           onClose={() => setFindOpen(false)}
+        />
+      )}
+
+      {sheetOpen && selected && (
+        <SplitSheetModal
+          work={selected}
+          onUpdateSplits={splits => patchWork(selected.id, { splits })}
+          onClose={() => setSheetOpen(false)}
         />
       )}
     </div>

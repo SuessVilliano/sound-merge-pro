@@ -504,6 +504,8 @@ export interface WorkSplit {
   ipi?: string;
   proAffiliation?: string;
   share: number;
+  signed?: boolean;
+  signedAt?: string;
 }
 
 export interface RegistrationState {
