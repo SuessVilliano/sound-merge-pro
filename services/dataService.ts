@@ -2,7 +2,7 @@
 import { collection, addDoc, query, where, orderBy, serverTimestamp, deleteDoc, doc, onSnapshot, Unsubscribe, limit, updateDoc, getDocs, setDoc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { GeneratedTrack } from './audioService';
-import { VoiceAsset, User, Stats, DistributionSubmission, SyncBrief, OpportunityRequest, FundingRequest, DistributionRelease, LegalRecord, VideoGenerationJob } from '../types';
+import { VoiceAsset, User, Stats, DistributionSubmission, SyncBrief, OpportunityRequest, FundingRequest, DistributionRelease, LegalRecord, VideoGenerationJob, MusicWork } from '../types';
 
 let isFirestoreRestricted = localStorage.getItem('sf_firestore_restricted') === 'true';
 
@@ -244,6 +244,20 @@ export const dataService = {
       const plays = this.getCatalogPlays();
       plays[trackId] = (plays[trackId] || 0) + 1;
       localStorage.setItem('sf_catalog_plays', JSON.stringify(plays));
+  },
+
+  // --- RIGHTS & REGISTRATION HUB ---
+  getRightsWorks(userId: string): MusicWork[] {
+      try {
+          const saved = localStorage.getItem(`sf_rights_works_${userId}`);
+          return saved ? JSON.parse(saved) : [];
+      } catch (e) { return []; }
+  },
+
+  saveRightsWorks(userId: string, works: MusicWork[]): void {
+      try {
+          localStorage.setItem(`sf_rights_works_${userId}`, JSON.stringify(works));
+      } catch (e) { console.error('[DataService] Failed to persist rights works', e); }
   },
 
   async deleteUserAccount(userId: string): Promise<void> {

@@ -25,6 +25,7 @@ export const VIEWS = {
   CRM: 'crm',
   VOICE: 'voice',
   DISTRIBUTION: 'distribution',
+  RIGHTS: 'rights',
   DAO: 'dao',
   MONITORING: 'monitoring',
   SETTINGS: 'settings',
@@ -45,7 +46,8 @@ export const NAVIGATION_ITEMS = [
   { id: VIEWS.STAFF, label: 'AI Staff', icon: 'MessageSquare', ai: true, milestone: 'core' },
   { id: VIEWS.STUDIO, label: 'AI Studio', icon: 'Wand2', ai: true, milestone: 'core' },
   { id: VIEWS.VOICE, label: 'Voice Market', icon: 'Mic', ai: true, milestone: 'core' },
-  
+  { id: VIEWS.RIGHTS, label: 'Rights Hub', icon: 'ShieldCheck', milestone: 'core' },
+
   // UNLOCKS AFTER FIRST ASSET (XP > 0)
   { id: VIEWS.MY_MUSIC, label: 'My Library', icon: 'Music', milestone: 'first_asset' },
   { id: VIEWS.CATALOG, label: 'Music Catalog', icon: 'Disc', milestone: 'first_asset' },
@@ -164,6 +166,128 @@ export const PRO_PLATFORMS = [
   { name: 'SoundExchange', type: 'Digital Performance', url: 'https://www.soundexchange.com/' },
   { name: 'The MLC', type: 'Mechanical', url: 'https://www.themlc.com/' },
   { name: 'PRS for Music', type: 'PRO', url: 'https://www.prsformusic.com/' },
+];
+
+/**
+ * RIGHTS REGISTRATION COCKPIT
+ * Each registry an artist's works must be filed with. None of these bodies
+ * expose a public submission API, so Sound Merge prepares copy-paste-ready
+ * data packets and routes the artist into the correct portal.
+ */
+export const RIGHTS_REGISTRIES = [
+  {
+    id: 'copyright_us',
+    name: 'U.S. Copyright Office',
+    short: 'Copyright',
+    registers: 'Composition + Master',
+    tagline: 'Your legal proof of authorship.',
+    purpose: 'Creates the official public record that you authored the song. Registration is required before you can sue for infringement, and it unlocks statutory damages and attorney fees.',
+    cost: '$45–$85 per filing',
+    timeline: 'Several months to receive a certificate',
+    needs: [
+      'Work title',
+      'Legal name of every author',
+      'Year the work was completed',
+      'Date + nation of first publication (if released)',
+      'Deposit copy: lyric sheet + audio master',
+    ],
+    steps: [
+      'Create a free account at the Copyright Office eCO portal.',
+      'Start a Standard Application for a musical work (add the sound recording if you own it).',
+      'Enter the title, authors, and year of creation from the packet below.',
+      'Add first-publication details if the song has been released.',
+      'Pay the filing fee and upload your lyric sheet + audio deposit copy.',
+    ],
+    portalLinks: [
+      { label: 'Open eCO Filing Portal', url: 'https://eco.copyright.gov/' },
+      { label: 'Copyright.gov Music Guide', url: 'https://www.copyright.gov/registration/music/' },
+    ],
+  },
+  {
+    id: 'mlc',
+    name: 'The MLC',
+    short: 'Mechanical',
+    registers: 'Composition',
+    tagline: 'Collects your US mechanical royalties.',
+    purpose: 'The Mechanical Licensing Collective pays mechanical royalties for streams and downloads in the US. Registering your compositions lets the MLC match them to recordings and pay the songwriters.',
+    cost: 'Free for self-administered songwriters',
+    timeline: 'Registration is quick; matching is ongoing',
+    needs: [
+      'Work title',
+      'ISWC (if one has been assigned)',
+      'Every songwriter + their IPI/CAE number',
+      'Publisher(s) — or a self-published designation',
+      'Ownership shares totalling exactly 100%',
+      'Matched recording ISRC(s)',
+    ],
+    steps: [
+      'Create a Member account in the MLC portal.',
+      'Open Add/Edit Works and start a new work registration.',
+      'Enter writers, publishers, and shares exactly as listed below.',
+      'Attach the recording by ISRC so streams can be matched.',
+      'Submit the work and confirm it appears in your catalog.',
+    ],
+    portalLinks: [
+      { label: 'Open The MLC Portal', url: 'https://portal.themlc.com/' },
+      { label: 'The MLC Home', url: 'https://www.themlc.com/' },
+    ],
+  },
+  {
+    id: 'soundexchange',
+    name: 'SoundExchange',
+    short: 'Digital Performance',
+    registers: 'Master',
+    tagline: 'Royalties from digital + satellite radio.',
+    purpose: 'SoundExchange collects digital performance royalties for sound recordings played on non-interactive services like SiriusXM and internet radio. It pays the featured artist and the recording owner directly.',
+    cost: 'Free to register',
+    timeline: 'Register anytime; royalties accrue continuously',
+    needs: [
+      'ISRC for the recording',
+      'Recording title',
+      'Featured artist name(s)',
+      'Sound recording owner / label',
+      'Release date',
+    ],
+    steps: [
+      'Create a SoundExchange account.',
+      'Register as a recording artist and/or rights owner.',
+      'Add your recordings using the ISRC and details below.',
+      'Submit and verify your recordings are listed.',
+    ],
+    portalLinks: [
+      { label: 'Open SoundExchange Registration', url: 'https://www.soundexchange.com/artist-copyright-owner/register-now/' },
+      { label: 'SoundExchange Home', url: 'https://www.soundexchange.com/' },
+    ],
+  },
+  {
+    id: 'pro',
+    name: 'PRO — ASCAP / BMI / SESAC',
+    short: 'Performance',
+    registers: 'Composition',
+    tagline: 'Performance royalties from radio, TV + venues.',
+    purpose: 'A Performing Rights Organization collects public-performance royalties whenever your song is played publicly. Join one PRO as a writer, then register every work so performances are tracked to you.',
+    cost: 'BMI free · ASCAP ~$50 one-time · SESAC by invitation',
+    timeline: 'Join once; register each work as it is finished',
+    needs: [
+      'Active PRO membership (writer + publisher)',
+      'Work title as it will be registered',
+      'Each writer IPI/CAE number',
+      'Publisher details + splits',
+      'Performance shares totalling 100%',
+    ],
+    steps: [
+      'Join one PRO as a writer — and set up your publisher entity.',
+      'Log in to your PRO member portal.',
+      'Start a new work registration.',
+      'Enter writers, publishers, and shares from the packet below.',
+      'Submit and note the work ID the PRO assigns.',
+    ],
+    portalLinks: [
+      { label: 'Join / Open ASCAP', url: 'https://www.ascap.com/' },
+      { label: 'Join / Open BMI', url: 'https://www.bmi.com/' },
+      { label: 'SESAC', url: 'https://www.sesac.com/' },
+    ],
+  },
 ];
 
 export const DISTRIBUTION_PARTNERS = [

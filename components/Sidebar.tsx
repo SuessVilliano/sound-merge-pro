@@ -3,7 +3,7 @@ import {
   Music2, LogOut, PanelLeftClose, PanelLeft, X, Star, History, List, AlertCircle, 
   Trophy, HelpCircle, Shield, LayoutDashboard, MessageSquare, Zap, Wallet, 
   Landmark, Swords, Disc, Wand2, MapPin, DollarSign, Briefcase, BookOpen, 
-  Users, Sliders, BarChart2, User, Mail, Mic, Radio, Activity, Vote, Link, Lock, LayoutGrid
+  Users, Sliders, BarChart2, User, Mail, Mic, Radio, Activity, Vote, Link, Lock, LayoutGrid, ShieldCheck
 } from 'lucide-react';
 import { NAVIGATION_ITEMS, APP_NAME, VIEWS } from '../constants';
 import { authService } from '../services/authService';
@@ -13,7 +13,7 @@ import { Stats } from '../types';
 const ICON_MAP: Record<string, any> = {
   LayoutDashboard, MessageSquare, Zap, Wallet, Landmark, Swords, Disc, Wand2, 
   Star, Music: Music2, MapPin, DollarSign, Briefcase, BookOpen, Users, 
-  Sliders, BarChart2, User, Mail, Mic, Radio, Vote, Link, Activity, Grid: LayoutGrid
+  Sliders, BarChart2, User, Mail, Mic, Radio, Vote, Link, Activity, Grid: LayoutGrid, ShieldCheck
 };
 
 interface SidebarProps {

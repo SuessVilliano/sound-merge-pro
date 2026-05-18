@@ -22,6 +22,7 @@ import { AcademyView } from './components/AcademyView';
 import { RevenueRecovery } from './components/RevenueRecovery';
 import { Advances } from './components/Advances'; 
 import { MusicDistribution } from './components/MusicDistribution';
+import { RightsHub } from './components/RightsHub';
 import { MarketingCRM } from './components/MarketingCRM';
 import { VoiceMarketplace } from './components/VoiceMarketplace';
 import { AIMonitoring } from './components/AIMonitoring';
@@ -268,6 +269,7 @@ const AppContent = () => {
               {currentView === VIEWS.ACADEMY && <AcademyView />}
               {currentView === VIEWS.COMMUNITY && <CommunityView />}
               {currentView === VIEWS.DISTRIBUTION && <MusicDistribution />}
+              {currentView === VIEWS.RIGHTS && <RightsHub user={user} />}
               {currentView === VIEWS.VOICE && <div className="space-y-8"><VoiceMarketplace /><VoiceShield user={user} onUpgrade={() => setShowPricingModal(true)} /></div>}
               {currentView === VIEWS.STUDIO && <MusicCreationStudio user={user} onUpgrade={() => setShowPricingModal(true)} />}
               {currentView === VIEWS.SETTINGS && <UserProfile user={user} />}

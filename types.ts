@@ -491,3 +491,48 @@ export interface DistributionRelease {
   title: string;
   status: string;
 }
+
+export type RightsRegistryId = 'copyright_us' | 'mlc' | 'soundexchange' | 'pro';
+
+export type RegistrationStatus = 'not_started' | 'data_ready' | 'submitted' | 'confirmed';
+
+export interface WorkSplit {
+  id: string;
+  name: string;
+  role: 'Writer/Composer' | 'Producer' | 'Publisher';
+  ipi?: string;
+  proAffiliation?: string;
+  share: number;
+}
+
+export interface RegistrationState {
+  status: RegistrationStatus;
+  referenceId?: string;
+  submittedAt?: string;
+  confirmedAt?: string;
+  note?: string;
+}
+
+export interface MusicWork {
+  id: string;
+  userId: string;
+  title: string;
+  alternateTitle?: string;
+  artist: string;
+  iswc?: string;
+  isrc?: string;
+  upc?: string;
+  duration?: string;
+  releaseDate?: string;
+  creationYear?: string;
+  recordLabel?: string;
+  pLine?: string;
+  cLine?: string;
+  lyrics?: string;
+  isInstrumental?: boolean;
+  isReleased?: boolean;
+  splits: WorkSplit[];
+  registrations: Record<RightsRegistryId, RegistrationState>;
+  createdAt: string;
+  updatedAt: string;
+}
