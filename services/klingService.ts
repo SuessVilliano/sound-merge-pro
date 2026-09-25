@@ -6,9 +6,6 @@ import { VideoGenerationJob, Track } from '../types';
  * Positioned for Institutional Music Video Synthesis
  */
 
-const ACCESS_KEY = "A9A444T4tnaE8dHGQLBQbJDEBbbET3FB";
-const SECRET_KEY = "btNhm93CCbrHNNYfCtdahf3NMHKDhrTH";
-
 export type KlingMode = 'text_to_video' | 'image_to_video' | 'lip_sync' | 'extension' | 'avatar';
 
 export interface KlingConfig {
