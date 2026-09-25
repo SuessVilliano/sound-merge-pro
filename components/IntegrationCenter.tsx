@@ -23,6 +23,7 @@ const modeLabel: Record<string, string> = {
   adapter_needed: 'ADAPTER NEEDED',
   not_configured: 'NOT CONFIGURED',
   server_proxy_needed: 'MIGRATION NEEDED',
+  retiring: 'RETIRING',
   retiring: 'RETIRING'
 };
 
