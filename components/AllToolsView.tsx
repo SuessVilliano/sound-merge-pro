@@ -3,7 +3,7 @@ import React from 'react';
 import { 
     Music, Wand2, Mic, Disc, Zap, Briefcase, Swords, Radio, 
     DollarSign, MapPin, Mail, Landmark, Wallet, BarChart2, Star, 
-    Vote, Activity, Lock, CheckCircle2, ChevronRight, Sparkles, LayoutGrid, Globe, Video, Bot
+    Vote, Activity, Lock, CheckCircle2, ChevronRight, Sparkles, LayoutGrid, Globe, Video, Bot, Fingerprint
 } from 'lucide-react';
 import { NAVIGATION_ITEMS, VIEWS } from '../constants';
 import { authService } from '../services/authService';
@@ -25,7 +25,7 @@ const CATEGORIES = [
 const ICON_MAP: Record<string, any> = {
   Music, Wand2, Mic, Disc, Zap, Briefcase, Swords, Radio, 
   DollarSign, MapPin, Mail, Landmark, Wallet, BarChart2, Star, 
-  Vote, Activity, Video, Bot, Grid: LayoutGrid
+  Vote, Activity, Video, Bot, Fingerprint, Grid: LayoutGrid
 };
 
 export const AllToolsView: React.FC<AllToolsViewProps> = ({ stats, onNavigate, onUpgrade }) => {
@@ -51,7 +51,7 @@ export const AllToolsView: React.FC<AllToolsViewProps> = ({ stats, onNavigate, o
         creative: NAVIGATION_ITEMS.filter(t => [VIEWS.STUDIO, VIEWS.VISUAL_STUDIO, VIEWS.MASTERING, VIEWS.MY_MUSIC].includes(t.id)),
         // Fixed: Renamed VIEWS.FUNDING to VIEWS.ADVANCES
         business: NAVIGATION_ITEMS.filter(t => [VIEWS.CRM, VIEWS.ADVANCES, VIEWS.SMART_WALLET, VIEWS.AFFILIATES].includes(t.id)),
-        protection: NAVIGATION_ITEMS.filter(t => [VIEWS.VOICE, VIEWS.RELEASE_RAILS, VIEWS.DAO, VIEWS.MONITORING].includes(t.id)),
+        protection: NAVIGATION_ITEMS.filter(t => [VIEWS.VOICE, VIEWS.RELEASE_RAILS, VIEWS.CATALOG_IDENTITY, VIEWS.DAO, VIEWS.MONITORING].includes(t.id)),
         growth: NAVIGATION_ITEMS.filter(t => [VIEWS.OPPORTUNITIES, VIEWS.BRAND, VIEWS.BATTLES, VIEWS.DISTRIBUTION, VIEWS.TOURING, VIEWS.ANALYTICS, VIEWS.AR_DASHBOARD, VIEWS.INTEGRATIONS, VIEWS.MCP_HUB].includes(t.id)),
     };
 
@@ -158,6 +158,7 @@ function getToolDescription(view: string): string {
         [VIEWS.AFFILIATES]: "Expand your network and earn recurring revenue through professional partnerships.",
         [VIEWS.VOICE]: "Voice-rights workspace. Provider-backed fingerprinting and licensing activate only when connected.",
         [VIEWS.RELEASE_RAILS]: "Canonical release record connecting masters, metadata, splits, distribution, rights registrations and live links.",
+        [VIEWS.CATALOG_IDENTITY]: "Track ISRC, UPC/EAN, ISWC, IPI/CAE and external metadata links so usage and royalties can reconcile to the correct catalog.",
         [VIEWS.DAO]: "Participate in ecosystem governance and vote on platform development protocols.",
         [VIEWS.OPPORTUNITIES]: "Direct synchronization with global sync briefs from film, games, and advertising.",
         [VIEWS.BRAND]: "Neural visual engines for hyper-realistic promo videos and social marketing assets.",
