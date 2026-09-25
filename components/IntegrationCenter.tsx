@@ -12,7 +12,9 @@ const categoryIcon: Record<string, any> = {
   audio: Server,
   video: Video,
   voice: Mic2,
-  automation: Webhook
+  automation: Webhook,
+  wallet_data: Database,
+  licensing: ShieldCheck
 };
 
 const modeLabel: Record<string, string> = {
@@ -20,12 +22,14 @@ const modeLabel: Record<string, string> = {
   browser_agent: 'BROWSER AGENT',
   adapter_needed: 'ADAPTER NEEDED',
   not_configured: 'NOT CONFIGURED',
-  server_proxy_needed: 'MIGRATION NEEDED'
+  server_proxy_needed: 'MIGRATION NEEDED',
+  retiring: 'RETIRING'
 };
 
 const statusClass = (provider: IntegrationStatus) => {
   if (provider.real) return 'border-emerald-500/30 bg-emerald-500/5';
   if (provider.mode === 'browser_agent') return 'border-violet-500/30 bg-violet-500/5';
+  if (provider.mode === 'retiring') return 'border-rose-500/30 bg-rose-500/5';
   if (provider.configured) return 'border-amber-500/30 bg-amber-500/5';
   return 'border-slate-800 bg-slate-950';
 };
@@ -54,8 +58,8 @@ export const IntegrationCenter: React.FC = () => {
     return {
       real: providers.filter(p => p.real).length,
       browser: providers.filter(p => p.mode === 'browser_agent').length,
-      needsWork: providers.filter(p => p.configured && !p.real && p.mode !== 'browser_agent').length,
-      missing: providers.filter(p => !p.configured && p.mode !== 'browser_agent').length
+      needsWork: providers.filter(p => p.configured && !p.real && p.mode !== 'browser_agent' && p.mode !== 'retiring').length,
+      missing: providers.filter(p => !p.configured && p.mode !== 'browser_agent' && p.mode !== 'retiring').length
     };
   }, [health]);
 
@@ -121,6 +125,7 @@ export const IntegrationCenter: React.FC = () => {
                   <span className={`text-[8px] uppercase tracking-widest font-black px-2 py-1 rounded-full border ${
                     provider.real ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10' :
                     provider.mode === 'browser_agent' ? 'text-violet-300 border-violet-500/30 bg-violet-500/10' :
+                    provider.mode === 'retiring' ? 'text-rose-300 border-rose-500/30 bg-rose-500/10' :
                     provider.configured ? 'text-amber-300 border-amber-500/30 bg-amber-500/10' :
                     'text-slate-500 border-slate-700 bg-slate-900'
                   }`}>
