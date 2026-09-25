@@ -83,10 +83,11 @@ app.get('/api/sync/:node', authenticateToken, async (req, res) => {
 /**
  * HEADLESS GHL PROVISIONING
  */
-app.post('/api/integrations/ghl/provision', authenticateToken, async (req, res) => {
-    const { userId, role } = req.body;
-    // Logic for HighLevel sub-account creation via Sound Merge rails
-    res.json({ success: true, message: 'Institutional node provisioning initiated' });
+app.post('/api/integrations/ghl/provision', authenticateToken, async (_req, res) => {
+    res.status(501).json({
+        success: false,
+        error: 'GHL provisioning adapter is not connected. No sub-account was created.'
+    });
 });
 
 const PORT = process.env.PORT || 8080;
