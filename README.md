@@ -51,3 +51,8 @@ Release Rails is the canonical release operating system for Sound Merge. A stage
 - royalty-monitoring readiness
 
 Provider-ready JSON packets can be exported for DistroKid, PRO, The MLC and master-rights workflows. External submissions remain confirmation-gated so Sound Merge never reports a filing as complete before it actually happens.
+
+
+### Agent job queue
+
+Release Rails can now create structured external-workflow jobs for DistroKid, PRO registration, The MLC and master-rights administration. Jobs carry the provider-ready payload, blockers and notes, and remain final-approval-gated before legal attestations or irreversible submissions.
