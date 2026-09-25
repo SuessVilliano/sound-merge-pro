@@ -229,6 +229,31 @@ export interface ReleaseRailRecord {
   };
 }
 
+
+export type ReleaseAutomationJobProvider = 'distrokid' | 'pro' | 'mlc' | 'master_rights';
+export type ReleaseAutomationJobStatus = 'queued' | 'running' | 'awaiting_final_approval' | 'completed' | 'failed' | 'cancelled';
+
+export interface ReleaseAutomationJob {
+  id: string;
+  userId: string;
+  releaseRailId: string;
+  provider: ReleaseAutomationJobProvider;
+  status: ReleaseAutomationJobStatus;
+  createdAt: string;
+  updatedAt: string;
+  requiresFinalApproval: boolean;
+  payload: Record<string, any>;
+  blockers: string[];
+  notes: string[];
+  result?: {
+    confirmationId?: string;
+    externalUrl?: string;
+    message?: string;
+    completedAt?: string;
+  };
+  error?: string;
+}
+
 export interface VoiceAsset {
   token_id: string;
   voice_id: string; 
