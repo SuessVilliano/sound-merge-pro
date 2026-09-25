@@ -59,7 +59,7 @@ export const NAVIGATION_ITEMS = [
 
   // UNLOCKS AT LEVEL 3 (XP > 1000)
   { id: VIEWS.DISTRIBUTION, label: 'Distribution', icon: 'Radio', milestone: 'reputation_1000' },
-  { id: VIEWS.RELEASE_RAILS, label: 'Release Rails', icon: 'Radio', milestone: 'first_asset' },
+  { id: VIEWS.RELEASE_RAILS, label: 'Release Rails', icon: 'Radio', milestone: 'core' },
   { id: VIEWS.REVENUE, label: 'Revenue Recovery', icon: 'DollarSign', milestone: 'reputation_1000' },
   { id: VIEWS.TOURING, label: 'Gig Finder', icon: 'MapPin', milestone: 'reputation_1000' },
 
