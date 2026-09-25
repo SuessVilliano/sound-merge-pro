@@ -38,7 +38,9 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           localStorage.removeItem('sf_wallet_type');
       }
       if (savedSmartWallet) {
-          setSmartWalletAddress(savedSmartWallet);
+          // Smart-account creation is currently disabled; clear legacy simulated addresses.
+          localStorage.removeItem('sf_smart_wallet_address');
+          setSmartWalletAddress(null);
       }
 
       // Fetch prices periodically
