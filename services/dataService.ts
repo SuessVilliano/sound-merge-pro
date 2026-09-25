@@ -2,7 +2,7 @@
 import { collection, addDoc, query, where, orderBy, serverTimestamp, deleteDoc, doc, onSnapshot, Unsubscribe, limit, updateDoc, getDocs, setDoc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { GeneratedTrack } from './audioService';
-import { VoiceAsset, User, Stats, DistributionSubmission, SyncBrief, OpportunityRequest, FundingRequest, DistributionRelease, LegalRecord, VideoGenerationJob, ReleaseRailRecord } from '../types';
+import { VoiceAsset, User, Stats, DistributionSubmission, SyncBrief, OpportunityRequest, FundingRequest, DistributionRelease, LegalRecord, VideoGenerationJob, ReleaseRailRecord, ReleaseAutomationJob } from '../types';
 
 let isFirestoreRestricted = localStorage.getItem('sf_firestore_restricted') === 'true';
 
@@ -203,6 +203,89 @@ export const dataService = {
       } catch (e: any) {
           handleFirestoreError(e);
           this.getReleaseRails(userId).then(callback);
+          return () => {};
+      }
+  },
+
+  // --- RELEASE AUTOMATION JOB QUEUE ---
+  async saveReleaseAutomationJob(job: ReleaseAutomationJob): Promise<void> {
+      const key = `sf_release_jobs_${job.userId}`;
+      const saveLocal = () => {
+          const current = JSON.parse(localStorage.getItem(key) || '[]') as ReleaseAutomationJob[];
+          const next = [job, ...current.filter(j => j.id !== job.id)];
+          localStorage.setItem(key, JSON.stringify(next));
+      };
+
+      if (isFirestoreRestricted) { saveLocal(); return; }
+
+      try {
+          await setDoc(doc(db, 'release_automation_jobs', job.id), stripUndefined(job));
+      } catch (e: any) {
+          handleFirestoreError(e);
+          saveLocal();
+      }
+  },
+
+  async getReleaseAutomationJobs(userId: string): Promise<ReleaseAutomationJob[]> {
+      const key = `sf_release_jobs_${userId}`;
+      const readLocal = () => {
+          try { return JSON.parse(localStorage.getItem(key) || '[]') as ReleaseAutomationJob[]; }
+          catch { return []; }
+      };
+
+      if (isFirestoreRestricted) return readLocal();
+
+      try {
+          const qry = query(collection(db, 'release_automation_jobs'), where('userId', '==', userId));
+          const snap = await getDocs(qry);
+          return snap.docs
+              .map(d => d.data() as ReleaseAutomationJob)
+              .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+      } catch (e: any) {
+          handleFirestoreError(e);
+          return readLocal();
+      }
+  },
+
+  async updateReleaseAutomationJob(id: string, patch: Partial<ReleaseAutomationJob>, userId?: string): Promise<void> {
+      const updatedAt = new Date().toISOString();
+      const updateLocal = () => {
+          if (!userId) return;
+          const key = `sf_release_jobs_${userId}`;
+          const current = JSON.parse(localStorage.getItem(key) || '[]') as ReleaseAutomationJob[];
+          localStorage.setItem(key, JSON.stringify(current.map(j => j.id === id ? { ...j, ...patch, updatedAt } : j)));
+      };
+
+      if (isFirestoreRestricted) { updateLocal(); return; }
+
+      try {
+          await updateDoc(doc(db, 'release_automation_jobs', id), stripUndefined({ ...patch, updatedAt }));
+      } catch (e: any) {
+          handleFirestoreError(e);
+          updateLocal();
+      }
+  },
+
+  subscribeToReleaseAutomationJobs(userId: string, callback: (jobs: ReleaseAutomationJob[]) => void): Unsubscribe {
+      if (isFirestoreRestricted) {
+          this.getReleaseAutomationJobs(userId).then(callback);
+          return () => {};
+      }
+
+      try {
+          const qry = query(collection(db, 'release_automation_jobs'), where('userId', '==', userId));
+          return onSnapshot(qry, snap => {
+              const jobs = snap.docs
+                  .map(d => d.data() as ReleaseAutomationJob)
+                  .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+              callback(jobs);
+          }, err => {
+              handleFirestoreError(err);
+              this.getReleaseAutomationJobs(userId).then(callback);
+          });
+      } catch (e: any) {
+          handleFirestoreError(e);
+          this.getReleaseAutomationJobs(userId).then(callback);
           return () => {};
       }
   },
