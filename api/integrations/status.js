@@ -60,10 +60,10 @@ export default async function handler(req, res) {
       label: "Chartmetric",
       category: "data",
       configured: configured("CHARTMETRIC_REFRESH_TOKEN"),
-      mode: configured("CHARTMETRIC_REFRESH_TOKEN") ? "server_proxy_needed" : "not_configured",
-      real: false,
+      mode: configured("CHARTMETRIC_REFRESH_TOKEN") ? "api" : "not_configured",
+      real: configured("CHARTMETRIC_REFRESH_TOKEN"),
       note: configured("CHARTMETRIC_REFRESH_TOKEN")
-        ? "Token exists but the current client-side implementation should be migrated behind a server proxy."
+        ? "Artist search and Spotify audience analytics route through the authenticated server proxy."
         : "Add CHARTMETRIC_REFRESH_TOKEN when ready."
     },
     {
@@ -112,13 +112,58 @@ export default async function handler(req, res) {
       note: "Artist Marketplace closes September 30, 2026. Direct-submit simulation has been disabled; preserve/export existing data and use current licensing channels."
     },
     {
+      id: "solana_mint",
+      label: "Solana Minting",
+      category: "rights",
+      configured: false,
+      mode: "adapter_needed",
+      real: false,
+      note: "Wallet connection and transaction verification can be real; minting stays disabled until metadata storage + Metaplex execution are verified."
+    },
+    {
+      id: "lighthouse",
+      label: "Lighthouse / IPFS",
+      category: "storage",
+      configured: configured("LIGHTHOUSE_API_KEY"),
+      mode: configured("LIGHTHOUSE_API_KEY") ? "server_proxy_needed" : "not_configured",
+      real: false,
+      note: configured("LIGHTHOUSE_API_KEY") ? "Credential exists; secure upload adapter still needs to be implemented." : "Add LIGHTHOUSE_API_KEY when building the secure storage adapter."
+    },
+    {
+      id: "google_calendar",
+      label: "Google Calendar",
+      category: "calendar",
+      configured: false,
+      mode: "adapter_needed",
+      real: false,
+      note: "Old simulated OAuth/events were removed. A real OAuth/calendar adapter still needs to be connected."
+    },
+    {
+      id: "crm",
+      label: "CRM / GHL Gateway",
+      category: "crm",
+      configured: false,
+      mode: "adapter_needed",
+      real: false,
+      note: "Fallback contacts, threads and fake send success were removed. The gateway must return real authenticated data before this can be marked connected."
+    },
+    {
+      id: "royalty_recovery",
+      label: "Royalty Recovery",
+      category: "royalties",
+      configured: false,
+      mode: "adapter_needed",
+      real: false,
+      note: "Demo recovery dollars were removed. Connect PRO/CMO, mechanical, neighboring-rights, distributor or publishing sources before reporting recovery totals."
+    },
+    {
       id: "system_webhook",
       label: "System Webhook",
       category: "automation",
       configured: configured("SYSTEM_BACKUP_WEBHOOK"),
-      mode: configured("SYSTEM_BACKUP_WEBHOOK") ? "server_proxy_needed" : "not_configured",
-      real: false,
-      note: configured("SYSTEM_BACKUP_WEBHOOK") ? "Webhook configured; route from backend instead of exposing destination in client." : "Add SYSTEM_BACKUP_WEBHOOK."
+      mode: configured("SYSTEM_BACKUP_WEBHOOK") ? "api" : "not_configured",
+      real: configured("SYSTEM_BACKUP_WEBHOOK"),
+      note: configured("SYSTEM_BACKUP_WEBHOOK") ? "Authenticated server relay is active; destination is no longer exposed to the client." : "Add SYSTEM_BACKUP_WEBHOOK."
     }
   ];
 
