@@ -91,7 +91,7 @@ export const Funding: React.FC<FundingProps> = ({ user }) => {
                   <Landmark className="text-cyan-500" /> Capital Funding
               </h1>
               <p className="text-slate-400 mt-2 max-w-xl">
-                  Institutional, catalog-based funding for professional artists. Access advances based on verified streaming performance and rights ownership.
+                  Funding-request workspace for artists. Estimates use the figures you enter; external underwriting and funding-partner delivery are not connected yet.
               </p>
           </div>
       </div>
@@ -104,7 +104,7 @@ export const Funding: React.FC<FundingProps> = ({ user }) => {
                           <Info className="w-5 h-5 text-cyan-400" /> Overview
                       </h3>
                       <p className="text-slate-400 text-sm leading-relaxed">
-                          Sound Merge partners with institutional capital providers to offer non-recourse advances. Unlike traditional loans, these are based on the proven market value of your existing catalog.
+                          Sound Merge can collect the information needed for a catalog advance request. Until a funding partner is connected, this page does not represent a live offer, approval, or lender relationship.
                       </p>
                   </div>
                   <div className="bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
@@ -116,7 +116,7 @@ export const Funding: React.FC<FundingProps> = ({ user }) => {
                               <CheckCircle2 className="w-4 h-4 text-green-500" /> $100+ net royalties in last 6 months
                           </li>
                           <li className="flex items-center gap-3 text-sm text-slate-300">
-                              <CheckCircle2 className="w-4 h-4 text-green-500" /> Verified distribution history
+                              <CheckCircle2 className="w-4 h-4 text-green-500" /> Distribution history available for later verification
                           </li>
                           <li className="flex items-center gap-3 text-sm text-slate-300">
                               <CheckCircle2 className="w-4 h-4 text-green-500" /> Documented ownership of masters/publishing
@@ -127,7 +127,7 @@ export const Funding: React.FC<FundingProps> = ({ user }) => {
               <div className="bg-indigo-600 rounded-2xl p-8 text-white flex flex-col justify-between">
                   <div>
                     <h2 className="text-2xl font-bold mb-4">Calculate Your Potential</h2>
-                    <p className="text-indigo-100 mb-8">Get an instant indicative estimate based on your streaming performance.</p>
+                    <p className="text-indigo-100 mb-8">Model a non-binding estimate from your own royalty inputs.</p>
                   </div>
                   <button 
                     onClick={() => setStep('calculator')}
@@ -215,7 +215,7 @@ export const Funding: React.FC<FundingProps> = ({ user }) => {
                         onClick={() => setStep('request')}
                         className="w-full py-4 bg-white text-slate-950 rounded-xl font-bold hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
                       >
-                          Submit Formal Request <ArrowRight className="w-5 h-5" />
+                          Save Funding Request <ArrowRight className="w-5 h-5" />
                       </button>
                       <button onClick={() => setStep('overview')} className="w-full text-slate-500 hover:text-white text-xs font-bold">Back to Overview</button>
                   </div>
@@ -226,7 +226,7 @@ export const Funding: React.FC<FundingProps> = ({ user }) => {
       {step === 'request' && (
           <div className="bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 animate-in slide-in-from-bottom-4 duration-300">
               <div className="flex justify-between items-center mb-8">
-                  <h2 className="text-2xl font-bold text-white">Application Terminal</h2>
+                  <h2 className="text-2xl font-bold text-white">Funding Request</h2>
                   <button onClick={() => setStep('calculator')} className="text-sm text-slate-500 hover:text-white">Cancel</button>
               </div>
 
@@ -312,7 +312,7 @@ export const Funding: React.FC<FundingProps> = ({ user }) => {
                         disabled={loading || !consent || !artistName || royalties < 0}
                         className="w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white font-bold rounded-xl shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all disabled:opacity-50"
                       >
-                          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Finalize Application"}
+                          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Save Request"}
                       </button>
                   </div>
               </div>
@@ -326,11 +326,10 @@ export const Funding: React.FC<FundingProps> = ({ user }) => {
               </div>
               <h2 className="text-3xl font-bold text-white">Application Received</h2>
               <p className="text-slate-400 leading-relaxed">
-                  Your institutional funding request has been secured on the Sound Merge Ledger. Our AI analysts and partner coordinators will review your data within 48-72 business hours.
+                  Your funding request has been stored in Sound Merge. No external funder transmission, underwriting decision, approval, or review timeline is implied.
               </p>
               <div className="bg-slate-900 border border-slate-800 rounded-xl p-4 inline-block mx-auto">
-                  <span className="text-xs text-slate-500 uppercase font-bold mr-3 tracking-widest">Reference ID:</span>
-                  <code className="text-cyan-400 font-mono">REQ-{Math.random().toString(36).substring(2, 10).toUpperCase()}</code>
+                  <span className="text-xs text-slate-500 uppercase font-bold tracking-widest">Stored in Sound Merge</span>
               </div>
               <div className="pt-8">
                   <button 
