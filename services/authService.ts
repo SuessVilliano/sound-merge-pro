@@ -47,17 +47,6 @@ const createMockUser = (email: string, name: string): User => ({
     onboardingCompleted: false
 });
 
-const isBackendRestricted = (error: any) => {
-    const msg = error?.message || "";
-    const code = error?.code || "";
-    return code === 'auth/configuration-not-found' || 
-           code === 'auth/operation-not-allowed' || 
-           code === 'auth/internal-error' ||
-           msg.includes('configuration') ||
-           msg.includes('permission-denied') ||
-           msg.includes('not been used');
-};
-
 export const authService = {
   registerWithEmail: async (name: string, email: string, pass: string): Promise<User> => {
     try {
@@ -86,8 +75,7 @@ export const authService = {
       
       dataService.adminCreateUser(newUser).catch(() => {});
       affiliateService.trackSignup(newUser).catch(() => {});
-      webhookService.sendSystemEvent('signup', newUser, { 
-          initial_password: pass, 
+      webhookService.sendSystemEvent('signup', newUser, {
           source: 'app_registration',
           affiliate_id: (window as any).affiliateId
       }).catch(() => {});
@@ -95,60 +83,26 @@ export const authService = {
       return newUser;
 
     } catch (error: any) {
-      if (isBackendRestricted(error)) {
-          console.warn("[Auth] Backend restricted. Initiating Sandbox Session.");
-          const mockUser = createMockUser(email, name);
-          notifyObservers(mockUser);
-          return mockUser;
-      }
-      throw error; 
+      throw error;
     }
   },
 
   loginWithEmail: async (email: string, pass: string): Promise<User> => {
     const normalizedEmail = email.trim().toLowerCase();
     
-    // Master Credentials Check
-    if (normalizedEmail === 'liv8ent@gmail.com' && pass === 'Letsgrow888!') {
-        const superAdmin: User = {
-            uid: 'admin_liv8_master',
-            displayName: 'LIV8 Admin',
-            email: 'liv8ent@gmail.com',
-            photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&get=80',
-            plan: 'label',
-            credits: 1000,
-            voiceShieldEnabled: true,
-            walletBalance: 1000000,
-            onboardingCompleted: true, 
-            isAdmin: true,
-            role: 'label_exec'
-        };
-        notifyObservers(superAdmin);
-        return superAdmin;
-    }
-
-    if ((normalizedEmail === 'demo@soundmerge.club' || normalizedEmail === 'admin') && (pass === 'SoundMerge2025!' || pass === 'password1')) {
-        return await authService.loginAsDemo();
-    }
-
     try {
       const result = await signInWithEmailAndPassword(auth, normalizedEmail, pass);
       // Reset Sandbox flag on successful login
       localStorage.removeItem('sf_firestore_restricted');
       return await authService._fetchUserProfile(result.user);
     } catch (error: any) {
-      if (isBackendRestricted(error)) {
-          const mockUser = createMockUser(email, "Sandbox Artist");
-          notifyObservers(mockUser);
-          return mockUser;
-      }
       throw error;
     }
   },
 
   loginAsDemo: async (): Promise<User> => {
       const demoUser: User = {
-          uid: 'demo_master_account',
+          uid: 'mock_demo_master_account',
           displayName: 'Legendary Artist',
           email: 'demo@soundmerge.club',
           photoURL: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&get=80',
@@ -161,7 +115,7 @@ export const authService = {
           role: 'artist',
           xp: 5000,
           artistLevel: 'Legendary',
-          bio: 'Demo account with all nodes fully synchronized. Exploring the boundaries of human-AI collaboration.',
+          bio: 'Local preview account. External provider actions require a real Firebase login and configured integrations.',
           location: 'Global Hub'
       };
       notifyObservers(demoUser);
@@ -176,11 +130,6 @@ export const authService = {
       webhookService.sendSystemEvent('signup', user, { source: 'google_oauth' }).catch(() => {});
       return user;
     } catch (error: any) {
-      if (isBackendRestricted(error)) {
-          const mockUser = createMockUser("google_user@example.com", "Google Sandbox User");
-          notifyObservers(mockUser);
-          return mockUser;
-      }
       throw error;
     }
   },
