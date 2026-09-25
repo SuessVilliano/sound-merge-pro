@@ -22,12 +22,15 @@ export const VoiceMarketplace: React.FC = () => {
       }
   }, [user]);
 
-  const handleListVoice = async (asset: VoiceAsset) => {
+  const handleListVoice = async (_asset: VoiceAsset) => {
       setLoading(true);
-      await new Promise(r => setTimeout(r, 1500));
-      // Mark as marketplace active in DB
-      setLoading(false);
-      alert("Voice profile listed on marketplace. Licensing protocols active.");
+      try {
+          throw new Error('Voice marketplace listing is not connected to a verified licensing marketplace yet.');
+      } catch (e: any) {
+          alert(e?.message || 'Voice marketplace unavailable.');
+      } finally {
+          setLoading(false);
+      }
   };
 
   return (
@@ -37,7 +40,7 @@ export const VoiceMarketplace: React.FC = () => {
           <h1 className="text-2xl font-black text-slate-900 dark:text-white flex items-center gap-3 uppercase tracking-tight italic">
               <Mic className="w-8 h-8 text-cyan-500" /> Voice IP Marketplace
           </h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 font-medium">Verified licensing for institutional voice avatars.</p>
+          <p className="text-slate-500 dark:text-slate-400 text-sm mt-1 font-medium">Voice licensing workspace. Listings remain disabled until a verified marketplace provider is connected.</p>
         </div>
 
         <div className="flex bg-slate-200 dark:bg-slate-800 rounded-xl p-1 border border-slate-300 dark:border-slate-700">
@@ -55,7 +58,7 @@ export const VoiceMarketplace: React.FC = () => {
             </div>
             <div className="h-64 bg-slate-100 dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-200 dark:border-slate-800 flex flex-col items-center justify-center text-slate-500">
                 <ShieldCheck className="w-12 h-12 mb-4 opacity-20" />
-                <p className="font-black uppercase text-xs tracking-widest italic">Scanning Marketplace Ledger...</p>
+                <p className="font-black uppercase text-xs tracking-widest italic">Marketplace Provider Not Connected</p>
             </div>
           </div>
       )}
@@ -81,11 +84,11 @@ export const VoiceMarketplace: React.FC = () => {
                               <div className="flex gap-4">
                                   <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/20">
                                       <div className="text-[8px] font-black uppercase opacity-60">Avg. Payout</div>
-                                      <div className="text-lg font-black">$45.00/Min</div>
+                                      <div className="text-lg font-black">Not Live</div>
                                   </div>
                                   <div className="bg-white/10 px-4 py-2 rounded-xl border border-white/20">
                                       <div className="text-[8px] font-black uppercase opacity-60">Yield Score</div>
-                                      <div className="text-lg font-black">92%</div>
+                                      <div className="text-lg font-black">—</div>
                                   </div>
                               </div>
                           </div>
@@ -105,7 +108,7 @@ export const VoiceMarketplace: React.FC = () => {
                                       <p className="text-slate-500 text-xs font-medium leading-relaxed mb-8 italic">"Vocal model trained on high-fidelity stems. Provenance watermark PerTh v4.5 applied."</p>
                                   </div>
                                   <button onClick={() => handleListVoice(asset)} disabled={loading} className="w-full py-4 bg-cyan-600 hover:bg-cyan-500 text-white font-black uppercase tracking-widest text-[10px] rounded-xl shadow-xl transition-all flex items-center justify-center gap-2">
-                                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Globe className="w-4 h-4" /> List Profile</>}
+                                      {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Globe className="w-4 h-4" /> Marketplace Setup Required</>}
                                   </button>
                               </div>
                           ))}
