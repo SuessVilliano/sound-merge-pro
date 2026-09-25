@@ -26,6 +26,71 @@ const download = (filename: string, data: any) => {
 };
 
 export const releaseAutomationService = {
+  buildLabelGridPacket(record: ReleaseRailRecord): ReleaseAutomationPacket {
+    const blockers: string[] = [];
+    if (!record.title) blockers.push('Release title missing.');
+    if (!record.artistName) blockers.push('Artist name missing.');
+    if (!record.releaseDate) blockers.push('Release date missing.');
+    if (!record.coverUrl) blockers.push('Cover art missing.');
+    if (!record.assetIds.length) blockers.push('No tracks attached.');
+    if (record.rails.mastered.state !== 'complete') blockers.push('Final master must be confirmed.');
+    if (record.rails.metadata.state !== 'complete') blockers.push('Release metadata must be confirmed.');
+    if (record.rails.rights.state !== 'complete') blockers.push('Rights review must be complete.');
+
+    return {
+      provider: 'labelgrid',
+      generatedAt: new Date().toISOString(),
+      releaseRailId: record.id,
+      ready: blockers.length === 0,
+      blockers,
+      mode: 'api_or_official_mcp',
+      payload: {
+        soundMergeReleaseId: record.releaseId,
+        release: {
+          title: record.title,
+          primaryArtist: record.artistName,
+          releaseType: record.releaseType,
+          releaseDate: record.releaseDate,
+          label: record.recordLabel,
+          genre: record.primaryGenre,
+          coverUrl: record.coverUrl
+        },
+        tracks: record.assetIds.map((assetId, index) => ({
+          assetId,
+          trackNumber: index + 1,
+          existingIsrc: record.identifiers.isrcByAssetId[assetId] || null
+        })),
+        rights: {
+          masterOwner: record.rights.masterOwner || null,
+          publishingAdmin: record.rights.publishingAdmin || null,
+          writers: record.rights.writers,
+          splitsConfirmed: record.rights.splitsConfirmed,
+          samplesCleared: record.rights.samplesCleared,
+          voiceLikenessCleared: record.rights.voiceLikenessCleared,
+          aiAssisted: record.rights.aiAssisted,
+          humanAuthorshipNotes: record.rights.humanAuthorshipNotes || null
+        },
+        workflow: [
+          'resolve_or_create_artist_and_label',
+          'resolve_or_create_writers',
+          'create_release_and_tracks',
+          'upload_audio_and_artwork',
+          'validate_release',
+          'await_final_distribution_approval',
+          'distribute_release',
+          'capture_delivery_status_identifiers_and_store_links',
+          'reconcile_royalties_and_statements'
+        ]
+      },
+      notes: [
+        'LabelGrid is the primary API-native distribution rail for Sound Merge when LABELGRID_API_TOKEN is configured.',
+        'Validation and draft preparation may run automatically; final distribution remains explicit-approval gated.',
+        'Use LabelGrid webhooks/delivery status to reconcile DSP delivery instead of marking a release live from a timer.',
+        'Use LabelGrid royalty, statement and transaction endpoints to feed post-release money tracking.'
+      ]
+    };
+  },
+
   buildDistroKidPacket(record: ReleaseRailRecord): ReleaseAutomationPacket {
     const blockers: string[] = [];
     if (!record.title) blockers.push('Release title missing.');
@@ -184,6 +249,7 @@ export const releaseAutomationService = {
   },
 
   build(record: ReleaseRailRecord, provider: ReleaseAutomationProvider): ReleaseAutomationPacket {
+    if (provider === 'labelgrid') return this.buildLabelGridPacket(record);
     if (provider === 'distrokid') return this.buildDistroKidPacket(record);
     if (provider === 'pro') return this.buildPROPacket(record);
     if (provider === 'mlc') return this.buildMLCPacket(record);
