@@ -1,8 +1,6 @@
 
 import React from 'react';
 import { CheckCircle2, X, Shield, Zap, Music } from 'lucide-react';
-import { authService } from '../services/authService';
-import { affiliateService } from '../services/affiliateService';
 import { User } from '../types';
 
 interface PricingModalProps {
@@ -16,15 +14,13 @@ export const PricingModal: React.FC<PricingModalProps> = ({ isOpen, onClose, use
   if (!isOpen) return null;
 
   const handleUpgrade = async (plan: 'pro' | 'label') => {
-      await new Promise(r => setTimeout(r, 1000));
-      const price = plan === 'pro' ? 19 : 99;
-      const invoiceId = `inv_${Date.now()}`;
-      await authService.updateUserPlan(plan);
-      if (user) {
-          await affiliateService.trackSale(user, price, invoiceId);
-      }
-      onUpgrade(plan);
-      onClose();
+      window.dispatchEvent(new CustomEvent('sf-notification', {
+          detail: {
+              title: 'Billing Not Connected',
+              message: `${plan === 'pro' ? 'Artist Pro' : 'Label'} is a pricing preview. Connect a verified billing provider before changing plans or recording a sale.`,
+              type: 'info'
+          }
+      }));
   };
 
   return (
