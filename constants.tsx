@@ -26,6 +26,7 @@ export const VIEWS = {
   VOICE: 'voice',
   DISTRIBUTION: 'distribution',
   RELEASE_RAILS: 'release-rails',
+  CATALOG_IDENTITY: 'catalog-identity',
   INTEGRATIONS: 'integrations',
   VISUAL_STUDIO: 'visual-studio',
   MCP_HUB: 'mcp-hub',
@@ -64,6 +65,7 @@ export const NAVIGATION_ITEMS = [
   // UNLOCKS AT LEVEL 3 (XP > 1000)
   { id: VIEWS.DISTRIBUTION, label: 'Distribution', icon: 'Radio', milestone: 'reputation_1000' },
   { id: VIEWS.RELEASE_RAILS, label: 'Release Rails', icon: 'Radio', milestone: 'core' },
+  { id: VIEWS.CATALOG_IDENTITY, label: 'Catalog Identity', icon: 'Fingerprint', milestone: 'core' },
   { id: VIEWS.INTEGRATIONS, label: 'Integration Center', icon: 'Activity', milestone: 'core' },
   { id: VIEWS.MCP_HUB, label: 'MCP Hub', icon: 'Bot', ai: true, milestone: 'core' },
   { id: VIEWS.REVENUE, label: 'Revenue Recovery', icon: 'DollarSign', milestone: 'reputation_1000' },
