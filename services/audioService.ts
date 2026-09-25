@@ -13,9 +13,6 @@ export interface GeneratedTrack {
   stems?: StemResult;
 }
 
-// KITS.AI client calls are legacy. Credentials are intentionally never shipped to the browser.
-const KITS_API_KEY = '';
-const KITS_BASE_URL = "https://arpeggi.io/api/kits/v1";
 
 // --- JOB QUEUE UTILITY ---
 const processJob = async <T>(
@@ -157,122 +154,24 @@ export const generateFallbackAudioUrl = (duration: number, type: 'beat' | 'vocal
 // --- KITS.AI CORE SUITE ---
 
 export const getKitsVoiceModels = async (): Promise<KitsVoiceModel[]> => {
-    try {
-        const response = await fetch(`${KITS_BASE_URL}/voice-models?order=asc`, {
-            headers: { 'Authorization': `Bearer ${KITS_API_KEY}` }
-        });
-        if (!response.ok) return [];
-        const data = await response.json();
-        return (data.data || []).map((m: any) => ({
-            id: m.id,
-            label: m.title,
-            tags: m.tags || ['Custom'],
-            image: m.imageUrl || 'https://picsum.photos/100/100',
-            isCustom: m.isCustom
-        })).slice(0, 20);
-    } catch (error) {
-        return [];
-    }
+  return [];
 };
 
 export const convertVoiceWithKits = async (
-    inputFile: File,
-    modelId: string,
-    pitchShift: number = 0
+  _inputFile: File,
+  _modelId: string,
+  _pitchShift: number = 0
 ): Promise<string> => {
-    return processJob('Voice Conversion', async () => {
-        try {
-            const formData = new FormData();
-            formData.append('soundFile', inputFile);
-            formData.append('voiceModelId', modelId);
-            formData.append('pitchShift', pitchShift.toString());
-            
-            const startRes = await fetch(`${KITS_BASE_URL}/voice-conversions`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${KITS_API_KEY}` },
-                body: formData
-            });
-            if (!startRes.ok) throw new Error("Kits Job Failed");
-            const jobData = await startRes.json();
-            return await pollKitsJob(jobData.id, '/voice-conversions');
-        } catch (error) {
-            return generateFallbackAudioUrl(10, 'vocal');
-        }
-    });
+  throw new Error('Kits voice conversion is not connected to a secure server-side adapter yet.');
 };
 
 export const separateAudioWithKits = async (
-    inputFile: File, 
-    onProgress?: (msg: string) => void
+  _inputFile: File,
+  onProgress?: (msg: string) => void
 ): Promise<StemResult> => {
-    return processJob('Neural Stem Separation', async () => {
-        try {
-            const formData = new FormData();
-            formData.append('soundFile', inputFile);
-            
-            if (onProgress) onProgress("Initializing Separator Node...");
-            
-            const startRes = await fetch(`${KITS_BASE_URL}/vocal-separations`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${KITS_API_KEY}` },
-                body: formData
-            });
-            
-            if (!startRes.ok) throw new Error("Separation Request Failed");
-            
-            const jobData = await startRes.json();
-            const jobId = jobData.id;
-            
-            if (onProgress) onProgress("Processing Audio Gradients...");
-            const result = await pollKitsSeparationJob(jobId, onProgress);
-            return result;
-            
-        } catch (error) {
-            await new Promise(r => setTimeout(r, 2000));
-            const mockUrl = generateFallbackAudioUrl(15, 'beat');
-            return {
-                vocalsUrl: mockUrl, instrumentalUrl: mockUrl, bassUrl: mockUrl, drumsUrl: mockUrl, otherUrl: mockUrl
-            };
-        }
-    });
+  if (onProgress) onProgress('Stem provider not connected.');
+  throw new Error('Kits stem separation is not connected to a secure server-side adapter yet.');
 };
-
-async function pollKitsSeparationJob(jobId: string, onProgress?: (msg: string) => void): Promise<StemResult> {
-    let attempts = 0;
-    while (attempts < 60) {
-        await new Promise(r => setTimeout(r, 3000));
-        const pollRes = await fetch(`${KITS_BASE_URL}/vocal-separations/${jobId}`, {
-            headers: { 'Authorization': `Bearer ${KITS_API_KEY}` }
-        });
-        if (!pollRes.ok) continue;
-        const data = await pollRes.json();
-        if (data.status === 'success') {
-            return {
-                vocalsUrl: data.vocalsUrl, instrumentalUrl: data.instrumentalUrl,
-                bassUrl: data.bassUrl, drumsUrl: data.drumsUrl, otherUrl: data.otherUrl
-            };
-        }
-        if (data.status === 'failed') throw new Error("Node Failure");
-        attempts++;
-    }
-    throw new Error("Job timed out");
-}
-
-async function pollKitsJob(jobId: string, endpointBase: string): Promise<string> {
-    let attempts = 0;
-    while (attempts < 60) {
-        await new Promise(r => setTimeout(r, 2000));
-        const pollRes = await fetch(`${KITS_BASE_URL}${endpointBase}/${jobId}`, {
-            headers: { 'Authorization': `Bearer ${KITS_API_KEY}` }
-        });
-        if (!pollRes.ok) continue;
-        const pollData = await pollRes.json();
-        if (pollData.status === 'success') return pollData.outputFileUrl || pollData.url;
-        if (pollData.status === 'failed') throw new Error("Node Failure");
-        attempts++;
-    }
-    throw new Error("Job timed out");
-}
 
 export const masterTrack = async (file: File, style: string, customPrompt?: string): Promise<{ url: string, stats: any }> => {
   return processJob('AI Mastering', async () => {
