@@ -17,7 +17,8 @@ const providers = [
   { id:"bandsintown", label:"Bandsintown", capabilities:["events","venues","ticket_links"], modes:["api"], preferred:"api" },
   { id:"musixmatch", label:"Musixmatch", capabilities:["licensed_lyrics","lyric_metadata"], modes:["api"], preferred:"api" },
   { id:"musicbrainz", label:"MusicBrainz", capabilities:["metadata","isrc","iswc","artist_release_lookup"], modes:["api"], preferred:"api" },
-  { id:"distrokid", label:"DistroKid", capabilities:["distribution"], modes:["browser_agent"], preferred:"browser_agent_until_partner_api_verified" },
+  { id:"labelgrid", label:"LabelGrid", capabilities:["distribution","catalog","royalties","analytics","webhooks"], modes:["api","mcp"], preferred:"api_for_product_mcp_for_agents" },
+  { id:"distrokid", label:"DistroKid", capabilities:["distribution"], modes:["browser_agent"], preferred:"browser_agent_for_existing_accounts" },
   { id:"the_mlc", label:"The MLC", capabilities:["mechanical_registration"], modes:["browser_agent","bulk_file","cwr"], preferred:"browser_agent_or_bulk_file" },
   { id:"bmi_ascap", label:"BMI / ASCAP / PRO portals", capabilities:["performance_registration"], modes:["browser_agent"], preferred:"browser_agent_with_final_approval" },
   { id:"soundexchange", label:"SoundExchange", capabilities:["neighboring_rights","repertoire_matching"], modes:["browser_agent","partner_api"], preferred:"browser_agent_or_approved_api" }
@@ -74,6 +75,16 @@ const toolDefinitions = [
       title:{type:"string"},
       vocalGender:{type:"string",enum:["male","female","none"]}
     },required:["provider","prompt"],additionalProperties:false}
+  },
+  {
+    name:"labelgrid",
+    description:"Use the configured LabelGrid API rail for real distribution, delivery status, analytics and royalty data. Final distribution requires an explicit acknowledgement.",
+    inputSchema:{type:"object",properties:{
+      action:{type:"string",enum:["connection","releases","release","delivery_status","analytics_summary","royalties","statements","transactions","outlets","create_release","validate_release","distribute_release"]},
+      releaseId:{type:"string"},
+      payload:{type:"object"},
+      acknowledgement:{type:"string"}
+    },required:["action"],additionalProperties:false}
   },
   {
     name:"release_readiness",
@@ -178,7 +189,7 @@ function routeCapability(capability){
     music_generation:["suno","mureka"],
     mastering:["landr","music_ai"],
     analytics:["chartmetric","songstats","spotify","youtube","apple_music"],
-    distribution:["distrokid","soundcloud"],
+    distribution:["labelgrid","distrokid","soundcloud"],
     rights:["the_mlc","bmi_ascap","soundexchange","musicbrainz"],
     touring:["bandsintown"],
     lyrics:["musixmatch"],
@@ -214,6 +225,60 @@ async function createMusicJob(args){
     return {provider:"suno",submitted:true,completed:false,providerResponse:data};
   }
   throw new Error("Unsupported music provider.");
+}
+
+
+async function labelGridTool(args){
+  const token=process.env.LABELGRID_API_TOKEN;
+  if(!token) throw new Error("LABELGRID_API_TOKEN is not configured.");
+  const base=(process.env.LABELGRID_ENV || "production").toLowerCase()==="sandbox"
+    ? (process.env.LABELGRID_SANDBOX_BASE_URL || "https://api-sandbox.stg.labelgrid.com/api/public")
+    : "https://api.labelgrid.com/api/public";
+
+  const request=async(path,options={})=>{
+    const response=await fetch(`${base}${path}`,{
+      ...options,
+      headers:{
+        Authorization:`Bearer ${token}`,
+        Accept:"application/json",
+        ...(options.body?{"Content-Type":"application/json"}:{}),
+        ...(options.headers||{})
+      }
+    });
+    const text=await response.text();
+    let data={};
+    try{ data=text?JSON.parse(text):{}; }catch{ data={raw:text}; }
+    if(!response.ok) throw new Error(data?.message || data?.error || `LabelGrid request failed (${response.status})`);
+    return data;
+  };
+
+  switch(args.action){
+    case "connection": return request("/me");
+    case "releases": return request("/releases");
+    case "release":
+      if(!args.releaseId) throw new Error("releaseId required.");
+      return request(`/releases/${encodeURIComponent(args.releaseId)}`);
+    case "delivery_status":
+      if(!args.releaseId) throw new Error("releaseId required.");
+      return request(`/releases/${encodeURIComponent(args.releaseId)}/delivery-status`);
+    case "analytics_summary": return request("/analytics/summary");
+    case "royalties": return request("/royalties/breakdown");
+    case "statements": return request("/statements");
+    case "transactions": return request("/transactions");
+    case "outlets": return request("/distro-outlets");
+    case "create_release":
+      return request("/releases",{method:"POST",body:JSON.stringify(args.payload||{})});
+    case "validate_release":
+      if(!args.releaseId) throw new Error("releaseId required.");
+      return request(`/releases/${encodeURIComponent(args.releaseId)}/validate`,{method:"POST",body:JSON.stringify(args.payload||{})});
+    case "distribute_release":
+      if(!args.releaseId) throw new Error("releaseId required.");
+      if(args.acknowledgement!=="I approve this release for distribution"){
+        throw new Error('Final distribution is approval-gated. Set acknowledgement exactly to "I approve this release for distribution".');
+      }
+      return request(`/releases/${encodeURIComponent(args.releaseId)}/distribute`,{method:"POST",body:JSON.stringify(args.payload||{})});
+    default: throw new Error("Unsupported LabelGrid action.");
+  }
 }
 
 function releaseReadiness(args){
@@ -267,6 +332,8 @@ async function callTool(name,args){
     }
     case "create_music_job":
       return textContent(await createMusicJob(args));
+    case "labelgrid":
+      return textContent(await labelGridTool(args));
     case "release_readiness":
       return textContent(releaseReadiness(args));
     default:
@@ -284,7 +351,7 @@ export default async function handler(req,res){
     return res.status(200).json(rpcResult(id,{
       protocolVersion:PROTOCOL_VERSION,
       capabilities:{tools:{listChanged:false}},
-      serverInfo:{name:"sound-merge",version:"3.0.0"},
+      serverInfo:{name:"sound-merge",version:"3.1.0"},
       instructions:"Sound Merge centralizes independent-artist creation, media, release, rights, analytics and revenue workflows. Use API providers when deterministic software access exists, MCP for agent-native providers, and approval-gated browser workflows for portals without verified APIs."
     }));
   }
