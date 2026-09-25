@@ -9,6 +9,7 @@ import {
 import { DistributionRelease, DistributionTrack, Contributor, DistributionSubmission } from '../types';
 import { dataService } from '../services/dataService';
 import { authService } from '../services/authService';
+import { releaseRailsService } from '../services/releaseRailsService';
 
 const SERVICES_LIST = [ "Spotify", "Apple Music", "iTunes", "Instagram & Facebook", "TikTok", "YouTube Music", "Amazon", "Deezer", "Tidal" ];
 const GENRES = ["Pop", "Hip Hop", "R&B", "Rock", "Electronic", "Latin", "Indie"];
@@ -72,19 +73,26 @@ export const MusicDistribution: React.FC = () => {
   };
 
   const handleSubmit = async () => {
-      if (!release.title || !release.artistName || !release.coverUrl) { alert("Core metadata and artwork required."); return; }
-      
+      const tracks = release.tracks || [];
+      const hasTrackMetadata = tracks.length > 0 && tracks.every(t => t.title && t.asset_id);
+      if (!release.title || !release.artistName || !release.coverUrl || !hasTrackMetadata) {
+          alert("Release title, artist, artwork and every track title are required.");
+          return;
+      }
+
+      if (!user) return;
+
       setView('agent-processing');
       setAgentLogs([]);
       setAgentProgress(0);
 
       const steps = [
-          { msg: "Analyzing DDEX metadata compatibility...", time: 800 },
-          { msg: "Verifying ℗ and © ownership alignment...", time: 1000 },
-          { msg: "Securing Assets in Distribution Ledger...", time: 800 },
-          { msg: "Initializing LabelGrid white-label handshake...", time: 1500 },
-          { msg: "UPC/ISRC Request Queued for Registry...", time: 1000 },
-          { msg: "Release Protocol Finalized.", time: 500 }
+          { msg: "Validating release metadata and track identities...", time: 450 },
+          { msg: "Reviewing ℗ / © ownership fields and songwriter credits...", time: 550 },
+          { msg: "Creating canonical Sound Merge Release Record...", time: 450 },
+          { msg: "Preparing DistroKid-compatible metadata package...", time: 550 },
+          { msg: "Setting ISRC / UPC capture points for post-submission reconciliation...", time: 450 },
+          { msg: "Release Rails staged. External submission still requires confirmation.", time: 350 }
       ];
 
       for (let i = 0; i < steps.length; i++) {
@@ -93,21 +101,43 @@ export const MusicDistribution: React.FC = () => {
           setAgentProgress(((i + 1) / steps.length) * 100);
       }
 
-      if (user) {
-          const submission: Partial<DistributionSubmission> = {
-              ...release,
-              id: `dist_${Date.now()}`,
-              release_id: `rel_${crypto.randomUUID()}`,
-              userId: user.uid,
-              userName: user.displayName,
-              userEmail: user.email,
-              status: 'submitted',
-              createdAt: new Date().toISOString()
-          };
-          await dataService.submitDistributionSubmission(submission);
-      }
+      const submission: DistributionSubmission = {
+          ...(release as DistributionSubmission),
+          id: `dist_${Date.now()}`,
+          release_id: `rel_${crypto.randomUUID()}`,
+          userId: user.uid,
+          userName: user.displayName,
+          userEmail: user.email,
+          status: 'draft',
+          tracks,
+          createdAt: new Date().toISOString(),
+          metadata: {
+              ...(release.metadata || {}),
+              releaseType,
+              aiAssisted: true,
+              externalSubmissionConfirmed: false
+          }
+      };
 
-      setTimeout(() => setView('dashboard'), 1000);
+      await dataService.submitDistributionSubmission(submission);
+
+      const rail = releaseRailsService.fromDistribution(submission, releaseType);
+      rail.rails.distribution = {
+          state: 'ready',
+          updatedAt: new Date().toISOString(),
+          note: 'DistroKid-compatible release package prepared. External submission is not yet confirmed.'
+      };
+      await dataService.saveReleaseRail(rail);
+
+      window.dispatchEvent(new CustomEvent('sf-notification', {
+          detail: {
+              title: 'Release Rails Ready',
+              message: 'Canonical release record created. Review rights, then confirm distributor submission when it actually occurs.',
+              type: 'success'
+          }
+      }));
+
+      setTimeout(() => setView('dashboard'), 700);
   };
 
   if (view === 'agent-processing') {
