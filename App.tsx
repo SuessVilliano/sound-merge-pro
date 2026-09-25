@@ -23,6 +23,7 @@ import { RevenueRecovery } from './components/RevenueRecovery';
 import { Advances } from './components/Advances'; 
 import { MusicDistribution } from './components/MusicDistribution';
 import { ReleaseRails } from './components/ReleaseRails';
+import { CatalogIdentity } from './components/CatalogIdentity';
 import { IntegrationCenter } from './components/IntegrationCenter';
 import { VisualStudio } from './components/VisualStudio';
 import { MCPHub } from './components/MCPHub';
@@ -273,6 +274,7 @@ const AppContent = () => {
               {currentView === VIEWS.COMMUNITY && <CommunityView />}
               {currentView === VIEWS.DISTRIBUTION && <MusicDistribution />}
               {currentView === VIEWS.RELEASE_RAILS && <ReleaseRails />}
+              {currentView === VIEWS.CATALOG_IDENTITY && <CatalogIdentity />}
               {currentView === VIEWS.INTEGRATIONS && <IntegrationCenter />}
               {currentView === VIEWS.VISUAL_STUDIO && <VisualStudio />}
               {currentView === VIEWS.MCP_HUB && <MCPHub />}
