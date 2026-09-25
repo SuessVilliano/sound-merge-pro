@@ -94,6 +94,24 @@ export default async function handler(req, res) {
       note: configured("RESEMBLE_API_KEY") ? "Credential detected; client-side calls should be moved behind server proxy." : "Add RESEMBLE_API_KEY."
     },
     {
+      id: "alchemy",
+      label: "Alchemy",
+      category: "wallet_data",
+      configured: configured("ALCHEMY_API_KEY"),
+      mode: configured("ALCHEMY_API_KEY") ? "api" : "not_configured",
+      real: configured("ALCHEMY_API_KEY"),
+      note: configured("ALCHEMY_API_KEY") ? "Wallet/NFT/price data routes through the authenticated server proxy." : "Add ALCHEMY_API_KEY."
+    },
+    {
+      id: "songtradr",
+      label: "Songtradr Marketplace",
+      category: "licensing",
+      configured: false,
+      mode: "retiring",
+      real: false,
+      note: "Artist Marketplace closes September 30, 2026. Direct-submit simulation has been disabled; preserve/export existing data and use current licensing channels."
+    },
+    {
       id: "system_webhook",
       label: "System Webhook",
       category: "automation",
