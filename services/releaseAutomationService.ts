@@ -1,6 +1,6 @@
-import { ReleaseRailRecord } from '../types';
+import { ReleaseAutomationJob, ReleaseAutomationJobProvider, ReleaseRailRecord } from '../types';
 
-export type ReleaseAutomationProvider = 'distrokid' | 'pro' | 'mlc' | 'master_rights';
+export type ReleaseAutomationProvider = ReleaseAutomationJobProvider;
 
 export interface ReleaseAutomationPacket {
   provider: ReleaseAutomationProvider;
@@ -188,6 +188,27 @@ export const releaseAutomationService = {
     if (provider === 'pro') return this.buildPROPacket(record);
     if (provider === 'mlc') return this.buildMLCPacket(record);
     return this.buildMasterRightsPacket(record);
+  },
+
+  createJob(record: ReleaseRailRecord, provider: ReleaseAutomationProvider): ReleaseAutomationJob {
+    const packet = this.build(record, provider);
+    const now = new Date().toISOString();
+    return {
+      id: `release_job_${crypto.randomUUID()}`,
+      userId: record.userId,
+      releaseRailId: record.id,
+      provider,
+      status: 'queued',
+      createdAt: now,
+      updatedAt: now,
+      requiresFinalApproval: true,
+      payload: packet.payload,
+      blockers: packet.blockers,
+      notes: [
+        ...packet.notes,
+        'Agent instruction: prepare and populate the provider workflow, reconcile any existing work/record first, and stop before any final legal attestation or irreversible submission unless explicit final approval is present.'
+      ]
+    };
   },
 
   download(record: ReleaseRailRecord, provider: ReleaseAutomationProvider) {
