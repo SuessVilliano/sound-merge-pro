@@ -6,7 +6,7 @@ interface WalletContextType {
   walletAddress: string | null; // EOA (Phantom/TipLink)
   smartWalletAddress: string | null; // AA Smart Account (Alchemy)
   isConnecting: boolean;
-  walletType: 'phantom' | 'tiplink' | 'demo' | null;
+  walletType: 'phantom' | 'tiplink' | null;
   tokenPrices: TokenPrice[];
   
   connectTipLink: () => Promise<void>;
@@ -21,7 +21,7 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [smartWalletAddress, setSmartWalletAddress] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
-  const [walletType, setWalletType] = useState<'phantom' | 'tiplink' | 'demo' | null>(null);
+  const [walletType, setWalletType] = useState<'phantom' | 'tiplink' | null>(null);
   const [tokenPrices, setTokenPrices] = useState<TokenPrice[]>([]);
 
   // Check for existing connection on mount
@@ -30,9 +30,12 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       const savedType = localStorage.getItem('sf_wallet_type');
       const savedSmartWallet = localStorage.getItem('sf_smart_wallet_address');
       
-      if (savedWallet && savedType) {
+      if (savedWallet && (savedType === 'phantom' || savedType === 'tiplink')) {
           setWalletAddress(savedWallet);
-          setWalletType(savedType as any);
+          setWalletType(savedType);
+      } else if (savedWallet || savedType) {
+          localStorage.removeItem('sf_wallet_address');
+          localStorage.removeItem('sf_wallet_type');
       }
       if (savedSmartWallet) {
           setSmartWalletAddress(savedSmartWallet);
@@ -51,16 +54,10 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
   const connectTipLink = async () => {
       setIsConnecting(true);
       try {
-          // TipLink.io Simulation (In real app, import { TipLink } from '@tiplink/api')
-          await new Promise(r => setTimeout(r, 2000));
-          const mockAddress = "Tip" + Math.random().toString(36).substr(2, 4) + "..." + Math.random().toString(36).substr(2, 4);
-          
-          setWalletAddress(mockAddress);
-          setWalletType('tiplink');
-          localStorage.setItem('sf_wallet_address', mockAddress);
-          localStorage.setItem('sf_wallet_type', 'tiplink');
-      } catch (e) {
+          throw new Error('TipLink is not connected to a verified SDK flow yet.');
+      } catch (e: any) {
           console.error(e);
+          alert(e?.message || 'TipLink connection unavailable.');
       } finally {
           setIsConnecting(false);
       }
@@ -78,17 +75,8 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
               localStorage.setItem('sf_wallet_address', address);
               localStorage.setItem('sf_wallet_type', 'phantom');
           } else {
-              const confirmDemo = window.confirm("Phantom Wallet not detected. Connect in Demo Mode to test features?");
-              if (confirmDemo) {
-                  await new Promise(r => setTimeout(r, 800));
-                  const demoAddr = "Demo" + Math.random().toString(36).substr(2, 6) + "Sol";
-                  setWalletAddress(demoAddr);
-                  setWalletType('demo');
-                  localStorage.setItem('sf_wallet_address', demoAddr);
-                  localStorage.setItem('sf_wallet_type', 'demo');
-              } else {
-                  window.open('https://phantom.app/', '_blank');
-              }
+              window.open('https://phantom.app/', '_blank');
+              throw new Error('Phantom Wallet not detected.');
           }
       } catch (e) {
           console.error("Wallet connection failed:", e);
@@ -107,8 +95,9 @@ export const WalletProvider: React.FC<{ children: ReactNode }> = ({ children }) 
           const result = await alchemyService.createSmartWallet(walletAddress);
           setSmartWalletAddress(result.address);
           localStorage.setItem('sf_smart_wallet_address', result.address);
-      } catch (e) {
+      } catch (e: any) {
           console.error("Smart Wallet creation failed", e);
+          alert(e?.message || 'Smart Wallet creation unavailable.');
       } finally {
           setIsConnecting(false);
       }
