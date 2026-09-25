@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { User as UserType, Stats, Opportunity } from '../types';
 import { dataService } from '../services/dataService';
+import { ArtistJourney } from './ArtistJourney';
 
 const ICON_MAP: Record<string, any> = {
   Shield, Coins, Zap, Upload, Music, Disc, Wand2, MapPin, Briefcase, BookOpen, Users, Sliders, BarChart2, User, Mail, Mic, Radio, Vote, Link, Activity, Layout, Landmark, MessageSquare
@@ -52,11 +53,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             ) : (
                 <div className="bg-amber-500/10 border border-amber-500/20 rounded-full px-5 py-2 flex items-center gap-2 shadow-sm">
                     <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Sandbox Protocol Active</span>
+                    <span className="text-[10px] font-black text-amber-600 dark:text-amber-400 uppercase tracking-widest">Data Node Needs Attention</span>
                 </div>
             )}
         </div>
       </div>
+
+      <ArtistJourney onNavigate={onNavigate} />
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           <div className="lg:col-span-3 bg-gradient-to-br from-slate-900 via-slate-950 to-indigo-950 rounded-[2.5rem] p-10 text-white shadow-2xl relative overflow-hidden border border-white/5">
@@ -67,16 +70,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div className="relative z-10 flex flex-col md:flex-row justify-between h-full gap-12">
                   <div className="flex-1">
                     <div className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-indigo-300 mb-6">
-                        <Crown className="w-3 h-3" /> Total Artist Earnings
+                        <Crown className="w-3 h-3" /> Verified Artist Earnings
                     </div>
                     <div className="text-7xl font-black tracking-tighter mb-4">${stats.totalEarnings.toLocaleString()}<span className="text-2xl text-slate-500">.00</span></div>
                     <div className="flex gap-8">
                         <div>
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Total Streams</div>
+                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Verified Streams</div>
                             <div className="text-2xl font-bold text-green-400">{stats.totalStreams.toLocaleString()}</div>
                         </div>
                         <div>
-                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Forge Rep</div>
+                            <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Artist Progress</div>
                             <div className="text-2xl font-bold text-cyan-400">{stats.xp} XP</div>
                         </div>
                     </div>
@@ -95,7 +98,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           </svg>
                           <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
                               <span className="text-3xl font-black tracking-tighter">{Math.round(repPercent)}%</span>
-                              <span className="text-[8px] font-bold uppercase text-slate-500">Node Pwr</span>
+                              <span className="text-[8px] font-bold uppercase text-slate-500">Progress</span>
                           </div>
                       </div>
                       <div className="mt-4 text-[10px] font-black text-indigo-300 uppercase tracking-widest">{stats.artistLevel}</div>
@@ -112,18 +115,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Security Node</span>
                   </div>
                   <div>
-                      <h3 className="font-bold dark:text-white uppercase tracking-tight">VoiceShield™</h3>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">Vocal DNA protected on Solana.</p>
+                      <h3 className="font-bold dark:text-white uppercase tracking-tight">Codes + Rights</h3>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">Keep ISRC, UPC, ISWC, IPI, splits and rights connected.</p>
                   </div>
-                  <button onClick={() => onNavigate('voice')} className="mt-4 py-2.5 w-full text-[10px] font-black uppercase tracking-widest text-white bg-slate-950 dark:bg-slate-800 hover:bg-cyan-500 transition-all rounded-xl shadow-lg">
-                      Manage IP
+                  <button onClick={() => onNavigate('catalog-identity')} className="mt-4 py-2.5 w-full text-[10px] font-black uppercase tracking-widest text-white bg-slate-950 dark:bg-slate-800 hover:bg-cyan-500 transition-all rounded-xl shadow-lg">
+                      Open Catalog Identity
                   </button>
               </div>
 
-              <div className="bg-cyan-500 rounded-[2rem] p-6 shadow-2xl shadow-cyan-500/20 group cursor-pointer overflow-hidden relative transition-all hover:scale-[1.02]" onClick={onUpgrade}>
+              <div className="bg-cyan-500 rounded-[2rem] p-6 shadow-2xl shadow-cyan-500/20 group cursor-pointer overflow-hidden relative transition-all hover:scale-[1.02]" onClick={() => onNavigate('integrations')}>
                   <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-125 transition-transform"><Zap className="w-20 h-20 text-slate-950" /></div>
-                  <h3 className="text-slate-950 font-black text-lg uppercase tracking-tight">Expand Node</h3>
-                  <p className="text-slate-900/60 text-xs font-bold leading-relaxed mt-1">Unlock 100% royalties and AI Marketing Staff.</p>
+                  <h3 className="text-slate-950 font-black text-lg uppercase tracking-tight">Connect the Stack</h3>
+                  <p className="text-slate-900/60 text-xs font-bold leading-relaxed mt-1">See which APIs, MCP servers and browser-agent rails are ready for your artist business.</p>
                   <ArrowRight className="w-5 h-5 text-slate-950 mt-4 group-hover:translate-x-2 transition-transform" />
               </div>
           </div>
@@ -133,14 +136,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="lg:col-span-8 space-y-8">
               <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8 shadow-sm">
                   <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight mb-6 flex items-center gap-2">
-                      <Layout className="w-5 h-5 text-indigo-500" /> Roster Infrastructure
+                      <Layout className="w-5 h-5 text-indigo-500" /> Artist Business Stack
                   </h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {[
-                        { title: "Voice Market", desc: "License your voice avatar.", icon: "Shield", col: "text-purple-500", bg: "bg-purple-500/10", view: "voice" },
-                        { title: "Smart Wallet", desc: "Institutional AA account.", icon: "Wallet", col: "text-amber-500", bg: "bg-amber-500/10", view: "smart-wallet" },
-                        { title: "Advances", desc: "Catalog-based funding.", icon: "Landmark", col: "text-indigo-500", bg: "bg-indigo-500/10", view: "advances" },
-                        { title: "Distribution", desc: "Deploy to Spotify/TikTok.", icon: "Upload", col: "text-green-500", bg: "bg-green-500/10", view: "distribution" }
+                        { title: "Create", desc: "Lyrics, beats, AI + human.", icon: "Wand2", col: "text-purple-500", bg: "bg-purple-500/10", view: "studio" },
+                        { title: "Visual Studio", desc: "Higgsfield video + visuals.", icon: "Layout", col: "text-pink-500", bg: "bg-pink-500/10", view: "visual-studio" },
+                        { title: "Release Rails", desc: "Distribute + track delivery.", icon: "Radio", col: "text-indigo-500", bg: "bg-indigo-500/10", view: "release-rails" },
+                        { title: "Collect", desc: "Royalties + statements + recovery.", icon: "DollarSign", col: "text-green-500", bg: "bg-green-500/10", view: "revenue" }
                       ].map((act, i) => {
                           const IconComponent = ICON_MAP[act.icon];
                           return (
@@ -161,11 +164,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           <div className="lg:col-span-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-[2rem] p-8 flex flex-col shadow-sm">
               <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Sync Ledger</h3>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-tight">Opportunity Feed</h3>
                   <button onClick={() => onNavigate('opportunities')} className="text-[10px] font-black text-indigo-500 uppercase tracking-widest hover:underline">Full Feed</button>
               </div>
               
               <div className="space-y-4 overflow-y-auto flex-1 max-h-[400px] pr-2 custom-scrollbar">
+                  {opportunities.length === 0 && (
+                    <div className="rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 p-6 text-center">
+                      <Briefcase className="w-7 h-7 text-slate-400 mx-auto" />
+                      <div className="text-sm font-black text-slate-700 dark:text-slate-300 mt-3">No verified opportunities loaded</div>
+                      <p className="text-xs text-slate-500 mt-2">Connect or import a real sync/opportunity source before Sound Merge shows briefs here.</p>
+                    </div>
+                  )}
                   {opportunities.map(op => (
                       <div key={op.id} className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 hover:border-cyan-500/50 transition-all cursor-pointer group">
                           <div className="flex justify-between items-start mb-2">
