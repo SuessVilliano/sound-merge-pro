@@ -9,6 +9,61 @@ export default async function handler(req, res) {
 
   const providers = [
     {
+      id: "sound_merge_mcp",
+      label: "Sound Merge MCP",
+      category: "automation",
+      configured: configured("SOUND_MERGE_MCP_KEY"),
+      mode: configured("SOUND_MERGE_MCP_KEY") ? "mcp" : "not_configured",
+      real: configured("SOUND_MERGE_MCP_KEY"),
+      note: configured("SOUND_MERGE_MCP_KEY")
+        ? "Remote MCP endpoint is ready at /api/mcp for ChatGPT, Grokbot, Cursor, Claude and other MCP clients."
+        : "Set SOUND_MERGE_MCP_KEY to enable stable remote-agent access."
+    },
+    {
+      id: "higgsfield",
+      label: "Higgsfield",
+      category: "video",
+      configured: configured("HIGGSFIELD_API_KEY_ID") && configured("HIGGSFIELD_API_KEY_SECRET"),
+      mode: configured("HIGGSFIELD_API_KEY_ID") && configured("HIGGSFIELD_API_KEY_SECRET") ? "api" : "browser_agent",
+      real: configured("HIGGSFIELD_API_KEY_ID") && configured("HIGGSFIELD_API_KEY_SECRET"),
+      note: configured("HIGGSFIELD_API_KEY_ID") && configured("HIGGSFIELD_API_KEY_SECRET")
+        ? "Higgsfield API credentials are present for embedded generation. Official MCP and Web routes remain available too."
+        : "Use Higgsfield Web or official MCP now; add API credentials when you want generation embedded directly in Sound Merge."
+    },
+    {
+      id: "labelgrid",
+      label: "LabelGrid Distribution",
+      category: "distribution",
+      configured: configured("LABELGRID_API_TOKEN"),
+      mode: configured("LABELGRID_API_TOKEN") ? "api" : "not_configured",
+      real: configured("LABELGRID_API_TOKEN"),
+      note: configured("LABELGRID_API_TOKEN")
+        ? "Real distribution, delivery status, analytics, statements and royalty endpoints are available through the secure server gateway."
+        : "Add a LabelGrid API token to activate the full white-label distribution and royalty rail. LabelGrid also has an official MCP server."
+    },
+    {
+      id: "music_ai",
+      label: "Music.AI",
+      category: "audio",
+      configured: configured("MUSIC_AI_API_KEY"),
+      mode: configured("MUSIC_AI_API_KEY") ? "server_proxy_needed" : "not_configured",
+      real: false,
+      note: configured("MUSIC_AI_API_KEY")
+        ? "Credential detected. Build the secure workflow adapter for stems, transcription, voice detection and audio intelligence."
+        : "Music.AI is the preferred future stem/audio-intelligence rail."
+    },
+    {
+      id: "landr",
+      label: "LANDR Mastering",
+      category: "audio",
+      configured: configured("LANDR_API_KEY"),
+      mode: configured("LANDR_API_KEY") ? "server_proxy_needed" : "not_configured",
+      real: false,
+      note: configured("LANDR_API_KEY")
+        ? "Credential detected. Connect the mastering API to the Mastering Console."
+        : "LANDR is the preferred commercial mastering API rail when access is enabled."
+    },
+    {
       id: "gemini",
       label: "Gemini Prompt Architect",
       category: "ai",
