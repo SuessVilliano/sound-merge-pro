@@ -240,9 +240,6 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
       setOperationalMessage(`Handshaking Kling ${klingMode.replace('_', ' ').toUpperCase()} Node...`);
 
       try {
-          const success = await dataService.deductCredits(user.uid, cost);
-          if (!success) throw new Error("Credit settlement failed.");
-
           const config: KlingConfig = {
               mode: klingMode,
               prompt: videoPrompt,
@@ -252,6 +249,10 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
           };
 
           const job = await klingService.forgeVideo(selectedVideoTrack, config);
+
+          const success = await dataService.deductCredits(user.uid, cost);
+          if (!success) throw new Error("Credit settlement failed.");
+
           setActiveVideoJob(job);
           setVideoHistory(prev => [job, ...prev]);
           await dataService.saveVideoJob(user.uid, job);
