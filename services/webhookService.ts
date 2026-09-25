@@ -1,12 +1,8 @@
 
 import { User, WebhookLog, Opportunity } from '../types';
+import { auth } from './firebase';
 
-// This URL should point to your backend automation (Make.com, Zapier, n8n)
-// which then routes data to Supabase (Backup) and HighLevel (CRM/Community)
-// Example: "https://hook.us1.make.com/..."
-const SYSTEM_WEBHOOK_URL = process.env.SYSTEM_BACKUP_WEBHOOK || "https://apps.taskmagic.com/api/v1/webhooks/JPKrlyiBI0keHNRdW38Hw"; 
-
-// Local storage for logs (Mock Database for Webhooks)
+// System webhook destinations are server-side only.\n// Local storage for logs (Mock Database for Webhooks)
 let webhookLogs: WebhookLog[] = [];
 
 export const webhookService = {
@@ -36,23 +32,28 @@ export const webhookService = {
             event: eventType,
             status: 'pending',
             payload: payload,
-            destination: SYSTEM_WEBHOOK_URL
+            destination: '/api/system/event'
         };
 
         webhookLogs.unshift(logEntry); // Add to local log
 
         try {
-            // Fire and forget (don't await strictly if performance is key, but good to know if it fails)
-            const response = await fetch(SYSTEM_WEBHOOK_URL, {
+            const idToken = await auth.currentUser?.getIdToken();
+            if (!idToken) throw new Error('No authenticated session for system event.');
+
+            const response = await fetch('/api/system/event', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Authorization': `Bearer ${idToken}`,
+                    'Content-Type': 'application/json'
+                },
                 body: JSON.stringify(payload)
             });
 
             logEntry.status = response.ok ? 'success' : 'failed';
             logEntry.responseCode = response.status;
             
-            console.log(`[System Webhook] Sent ${eventType} event. Status: ${response.status}`);
+            console.log(`[System Webhook] Sent ${eventType} event through secure relay. Status: ${response.status}`);
 
         } catch (e) {
             console.error("Error sending system webhook", e);
