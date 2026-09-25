@@ -1,6 +1,4 @@
 
-const RESEMBLE_API_KEY = process.env.RESEMBLE_API_KEY || "zwYjeWCiycAosLZnOJtr9gtt";
-const BASE_URL = "https://f.cluster.resemble.ai";
 
 export interface DetectionResult {
     is_synthetic: boolean;
@@ -12,49 +10,25 @@ export const resembleService = {
     /**
      * Apply PerTh Neural Watermark to an existing audio file (Proxy call)
      */
-    applyWatermark: async (audioUrl: string): Promise<{ job_id: string, watermarked_url: string }> => {
-        console.log(`[Resemble PerTh] Applying institutional watermark to ${audioUrl}`);
-        // Real API would POST to /watermark/apply
-        await new Promise(r => setTimeout(r, 2000));
-        return {
-            job_id: `wm_job_${crypto.randomUUID()}`,
-            watermarked_url: audioUrl // In production, this would be a new GCS/S3 link
-        };
+    applyWatermark: async (_audioUrl: string): Promise<{ job_id: string, watermarked_url: string }> => {
+        throw new Error('Resemble watermarking is not connected to the secure server adapter yet.');
     },
 
     /**
      * Detect synthetic artifacts and watermarks
      */
-    detectDeepfake: async (audioFile: File): Promise<DetectionResult> => {
-        console.log(`[Resemble Detect] Executing audit for ${audioFile.name}...`);
-        await new Promise(r => setTimeout(r, 2500));
-        
-        const isSynthetic = Math.random() > 0.8;
-        return {
-            is_synthetic: isSynthetic,
-            score: isSynthetic ? 0.95 : 0.02,
-            watermark_detected: !isSynthetic
-        };
+    detectDeepfake: async (_audioFile: File): Promise<DetectionResult> => {
+        throw new Error('Resemble detection is not connected to the secure server adapter yet.');
     },
 
     /**
      * Standard Synthesis Flow
      */
-    synthesize: async (voiceUuid: string, text: string): Promise<string> => {
-        try {
-            const response = await fetch(`${BASE_URL}/synthesize`, {
-                method: 'POST',
-                headers: { 'Authorization': `Token token=${RESEMBLE_API_KEY}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ voice_uuid: voiceUuid, data: text, output_format: 'wav' })
-            });
-            if (!response.ok) throw new Error("Synthesis Failed");
-            const blob = await response.blob();
-            return URL.createObjectURL(blob);
-        } catch (e) { throw e; }
+    synthesize: async (_voiceUuid: string, _text: string): Promise<string> => {
+        throw new Error('Resemble synthesis is not connected to the secure server adapter yet.');
     },
 
-    createVoiceClone: async (name: string): Promise<string> => {
-        await new Promise(r => setTimeout(r, 1000));
-        return "voice_" + Math.random().toString(36).substr(2, 9);
+    createVoiceClone: async (_name: string): Promise<string> => {
+        throw new Error('Resemble voice cloning is not connected to the secure server adapter yet.');
     }
 };
