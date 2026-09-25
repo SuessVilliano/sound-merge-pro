@@ -1,6 +1,14 @@
 import { auth } from './firebase';
 import { MusicEngine } from './musicGenService';
 
+export interface StudioAudioNoteAnalysis {
+  transcript: string;
+  lyricDraft: string;
+  musicDirection: string;
+  promptSeed: string;
+  notes: string[];
+}
+
 export interface StudioPromptPack {
   title: string;
   stylePrompt: string;
@@ -23,6 +31,18 @@ const authHeaders = async () => {
 };
 
 export const studioPromptService = {
+  async analyzeAudio(input: { audioBase64: string; mimeType: string; context?: string }): Promise<StudioAudioNoteAnalysis> {
+    const response = await fetch('/api/ai/audio-note', {
+      method: 'POST',
+      headers: await authHeaders(),
+      body: JSON.stringify(input)
+    });
+
+    const data = await response.json();
+    if (!response.ok) throw new Error(data?.error || 'Voice memo analysis failed.');
+    return data.analysis as StudioAudioNoteAnalysis;
+  },
+
   async build(input: {
     brief?: string;
     currentStyle?: string;
