@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Sidebar } from './components/Sidebar';
 import { Header } from './components/Header';
 import { 
-  MOCK_OPPORTUNITIES, VIEWS, FEATURED_ARTISTS
+  VIEWS, FEATURED_ARTISTS
 } from './constants';
 // Fixed: parseRawBrief does not exist in geminiService, using parseBriefToSchema instead
 import { parseBriefToSchema } from './services/geminiService';
@@ -77,7 +77,7 @@ const AppContent = () => {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentView, setCurrentView] = useState(VIEWS.DASHBOARD);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>(MOCK_OPPORTUNITIES);
+  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [pendingDistributions, setPendingDistributions] = useState<DistributionSubmission[]>([]);
   const [realStats, setRealStats] = useState<Stats>({
       totalEarnings: 0, totalStreams: 0, activeOpportunities: 0, brandScore: '-',
@@ -135,17 +135,7 @@ const AppContent = () => {
             setUser(observedUser); 
             userUnsubscribe = dataService.subscribeToUserProfile(observedUser.uid, (updatedUser) => {
                 setUser(updatedUser);
-                dataService.getRealStats(observedUser.uid).then(stats => {
-                    if (updatedUser.uid === 'demo_master_account') {
-                        setRealStats({
-                            totalEarnings: 12500, totalStreams: 450000, activeOpportunities: 12, brandScore: 'A+',
-                            earningsGrowth: 15, streamsGrowth: 10, opportunitiesNew: true,
-                            artistLevel: "Legendary", xp: 5000, nextLevelXp: 10000
-                        });
-                    } else {
-                        setRealStats(stats);
-                    }
-                });
+                dataService.getRealStats(observedUser.uid).then(setRealStats);
 
                 // Load distribution submissions for AI awareness
                 dataService.getMyDistributionSubmissions(observedUser.uid).then(subs => {
@@ -153,7 +143,7 @@ const AppContent = () => {
                 });
 
                 const isLocallyDismissed = localStorage.getItem('sf_onboarding_skip') === 'true';
-                if (updatedUser.uid !== 'demo_master_account' && !updatedUser.onboardingCompleted && !onboardingDismissed && !isLocallyDismissed) {
+                if (updatedUser.uid !== 'mock_demo_master_account' && !updatedUser.onboardingCompleted && !onboardingDismissed && !isLocallyDismissed) {
                     setShowOnboarding(true);
                 } else if (updatedUser.onboardingCompleted && !updatedUser.tourCompleted) {
                     setShowGuidedTour(true);
