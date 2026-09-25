@@ -63,20 +63,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
         user = await authService.loginWithEmail(cleanEmail, password);
       }
 
-      // Check if we entered Simulation Mode automatically
-      if (user.uid.startsWith('mock_')) {
-          setIsSimulation(true);
-          setTimeout(() => onClose(), 1000);
-      } else {
-          onClose();
-      }
+      onClose();
     } catch (err: any) {
-      if (err.code === 'auth/configuration-not-found' || err.code === 'auth/operation-not-allowed' || err.message?.includes('configuration')) {
-          console.warn("Backend restricted. Initializing Sandbox...");
-          await handleGuestFallback();
-          return;
-      }
-
       setLoading(false);
       if (err.code === 'auth/invalid-email') setError("Invalid email format.");
       else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') setError("Invalid credentials.");
@@ -110,7 +98,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   </div>
                   <h3 className="text-xl font-bold text-white mb-2">Sandbox Active</h3>
                   <p className="text-slate-400 text-sm max-w-xs mx-auto">
-                      Firebase restricted in this environment. We've created a sandbox artist profile for you.
+                      Local preview mode is active. Provider APIs, protected data, and real submissions remain disabled until you sign in with a real account.
                   </p>
                   <div className="mt-6 flex items-center justify-center gap-2 text-xs text-cyan-500 font-bold">
                       <Loader2 className="w-3 h-3 animate-spin" /> Entering Studio...
@@ -182,7 +170,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
                   onClick={handleDemoLogin}
                   className="w-full flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-600 to-purple-600 text-white py-4 rounded-xl font-black uppercase tracking-widest text-[10px] hover:scale-[1.02] transition-all shadow-xl shadow-indigo-600/20"
                 >
-                  <Rocket className="w-4 h-4" /> Launch Legendary Pro Demo
+                  <Rocket className="w-4 h-4" /> Launch Local Preview Demo
                 </button>
                 <div className="grid grid-cols-2 gap-3">
                     <button 
