@@ -421,6 +421,38 @@ export const dataService = {
   },
 
   async getRealStats(userId: string): Promise<Stats> {
-      return { totalEarnings: 1250, totalStreams: 4520, activeOpportunities: 8, brandScore: 'B+', earningsGrowth: 12, streamsGrowth: 5, opportunitiesNew: false, artistLevel: "Rising Artist", xp: 1200, nextLevelXp: 2500 };
+      try {
+          const [userSnap, briefSnap] = await Promise.all([
+              getDoc(doc(db, 'users', userId)),
+              getDocs(collection(db, 'sync_briefs'))
+          ]);
+          const profile = userSnap.exists() ? userSnap.data() as Partial<User> : {};
+          return {
+              totalEarnings: 0,
+              totalStreams: 0,
+              activeOpportunities: briefSnap.size,
+              brandScore: '-',
+              earningsGrowth: 0,
+              streamsGrowth: 0,
+              opportunitiesNew: false,
+              artistLevel: profile.artistLevel || 'New Artist',
+              xp: profile.xp || 0,
+              nextLevelXp: Math.max((profile.xp || 0) + 1000, 1000)
+          };
+      } catch (e: any) {
+          handleFirestoreError(e);
+          return {
+              totalEarnings: 0,
+              totalStreams: 0,
+              activeOpportunities: 0,
+              brandScore: '-',
+              earningsGrowth: 0,
+              streamsGrowth: 0,
+              opportunitiesNew: false,
+              artistLevel: 'New Artist',
+              xp: 0,
+              nextLevelXp: 1000
+          };
+      }
   }
 };
