@@ -185,7 +185,7 @@ export interface ReleaseRailRecord {
   recordLabel: string;
   primaryGenre: string;
   coverUrl?: string;
-  distributor: 'DistroKid' | 'Other' | 'Unselected';
+  distributor: 'LabelGrid' | 'DistroKid' | 'Other' | 'Unselected';
   createdAt: string;
   updatedAt: string;
   sourceSubmissionId?: string;
@@ -230,7 +230,7 @@ export interface ReleaseRailRecord {
 }
 
 
-export type ReleaseAutomationJobProvider = 'distrokid' | 'pro' | 'mlc' | 'master_rights';
+export type ReleaseAutomationJobProvider = 'labelgrid' | 'distrokid' | 'pro' | 'mlc' | 'master_rights';
 export type ReleaseAutomationJobStatus = 'queued' | 'running' | 'awaiting_final_approval' | 'completed' | 'failed' | 'cancelled';
 
 export interface ReleaseAutomationJob {
