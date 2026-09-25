@@ -7,6 +7,7 @@ import { authService } from '../services/authService';
 import { dataService } from '../services/dataService';
 import { releaseRailsService } from '../services/releaseRailsService';
 import { releaseAutomationService, ReleaseAutomationProvider } from '../services/releaseAutomationService';
+import { labelGridService } from '../services/labelGridService';
 import { ReleaseAutomationJob, ReleaseRailRecord, ReleaseRailState } from '../types';
 
 const STEP_META: Array<{ key: keyof ReleaseRailRecord['rails']; label: string }> = [
@@ -44,6 +45,7 @@ export const ReleaseRails: React.FC = () => {
   const [records, setRecords] = useState<ReleaseRailRecord[]>([]);
   const [jobs, setJobs] = useState<ReleaseAutomationJob[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [labelGridConnected, setLabelGridConnected] = useState<boolean | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -53,6 +55,13 @@ export const ReleaseRails: React.FC = () => {
   useEffect(() => {
     if (!user) return;
     return dataService.subscribeToReleaseAutomationJobs(user.uid, setJobs);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user) return;
+    labelGridService.connection()
+      .then(result => setLabelGridConnected(Boolean(result?.connected)))
+      .catch(() => setLabelGridConnected(false));
   }, [user?.uid]);
 
   const totals = useMemo(() => {
@@ -155,6 +164,50 @@ export const ReleaseRails: React.FC = () => {
     await patchRecord(record, { rights, rails });
   };
 
+  const chooseDistributor = async (record: ReleaseRailRecord, distributor: ReleaseRailRecord['distributor']) => {
+    const rails = {
+      ...record.rails,
+      distribution: {
+        state: 'ready' as const,
+        updatedAt: new Date().toISOString(),
+        note: distributor === 'LabelGrid'
+          ? 'Primary API/MCP rail selected. Draft, validate and inspect delivery through LabelGrid; final distribution remains approval-gated.'
+          : distributor === 'DistroKid'
+            ? 'Existing-account browser-agent rail selected. Sound Merge will prepare the release and stop before final submission.'
+            : 'Distributor selected; verify the provider integration before submission.'
+      }
+    };
+    await patchRecord(record, { distributor, rails });
+  };
+
+  const linkLabelGridRelease = async (record: ReleaseRailRecord) => {
+    const releaseId = window.prompt('LabelGrid release ID:', record.identifiers.distributorReleaseId || '')?.trim();
+    if (!releaseId) return;
+
+    const identifiers = { ...record.identifiers, distributorReleaseId: releaseId };
+    let rails = { ...record.rails };
+    try {
+      const status = await labelGridService.deliveryStatus(releaseId);
+      const statusText = JSON.stringify(status);
+      rails = {
+        ...rails,
+        distribution: {
+          state: 'submitted' as const,
+          updatedAt: new Date().toISOString(),
+          note: 'LabelGrid release linked. Delivery status can now be reconciled from the provider.'
+        }
+      };
+      window.dispatchEvent(new CustomEvent('sf-notification', {
+        detail: { title: 'LabelGrid Linked', message: statusText.slice(0, 220), type: 'success' }
+      }));
+    } catch (e: any) {
+      window.dispatchEvent(new CustomEvent('sf-notification', {
+        detail: { title: 'Release ID Saved', message: e?.message || 'Delivery status is not available yet.', type: 'info' }
+      }));
+    }
+    await patchRecord(record, { identifiers, rails });
+  };
+
   const markRegistration = async (record: ReleaseRailRecord, key: 'pro' | 'mlc' | 'masterRights', label: string) => {
     const confirmationId = window.prompt(`${label} confirmation/work ID (optional):`) || undefined;
     await setStep(record, key, 'complete', `${label} registration confirmed by user.`, confirmationId);
@@ -193,7 +246,7 @@ export const ReleaseRails: React.FC = () => {
     window.dispatchEvent(new CustomEvent('sf-notification', {
       detail: {
         title: 'Agent Job Queued',
-        message: `${provider.toUpperCase()} job is ready for the connected browser agent. Final irreversible submission remains approval-gated.`,
+        message: `${provider.toUpperCase()} job is ready for the connected API/MCP/browser rail. Final irreversible submission remains approval-gated.`,
         type: 'success'
       }
     }));
@@ -224,6 +277,12 @@ export const ReleaseRails: React.FC = () => {
           <p className="mt-4 max-w-3xl text-slate-400 text-base md:text-lg leading-relaxed">
             One source of truth from finished master to distribution, registrations, live links and royalty monitoring. Sound Merge records what actually happened; it never marks an external filing complete without confirmation.
           </p>
+          <div className="mt-5 inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-1.5 text-[9px] font-black uppercase tracking-widest">
+            <span className={`w-2 h-2 rounded-full ${labelGridConnected ? 'bg-emerald-400' : labelGridConnected === false ? 'bg-amber-400' : 'bg-slate-600'}`} />
+            <span className={labelGridConnected ? 'text-emerald-300' : 'text-slate-400'}>
+              LabelGrid API Rail: {labelGridConnected ? 'Connected' : labelGridConnected === false ? 'Setup Required' : 'Checking'}
+            </span>
+          </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-8">
             {[
@@ -317,6 +376,17 @@ export const ReleaseRails: React.FC = () => {
                       </div>
                     </div>
 
+                    <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                      <div className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500 mb-3">Primary Distribution Rail</div>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => chooseDistributor(record, 'LabelGrid')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border ${record.distributor === 'LabelGrid' ? 'bg-cyan-500 text-slate-950 border-cyan-400' : 'bg-slate-900 text-slate-300 border-slate-700'}`}>LabelGrid API / MCP</button>
+                        <button onClick={() => chooseDistributor(record, 'DistroKid')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider border ${record.distributor === 'DistroKid' ? 'bg-violet-500 text-white border-violet-400' : 'bg-slate-900 text-slate-300 border-slate-700'}`}>DistroKid Browser Agent</button>
+                        {record.distributor === 'LabelGrid' && (
+                          <button onClick={() => linkLabelGridRelease(record)} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider">Link / Refresh LabelGrid ID</button>
+                        )}
+                      </div>
+                    </div>
+
                     <div className="flex flex-wrap gap-2">
                       {record.rails.mastered.state !== 'complete' && (
                         <button onClick={() => setStep(record, 'mastered', 'complete', 'Final master confirmed by user.')} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider">Confirm Master</button>
@@ -338,13 +408,15 @@ export const ReleaseRails: React.FC = () => {
                     <div className="pt-5 border-t border-slate-800">
                       <div className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500 mb-3">Agent / Export Packets</div>
                       <div className="flex flex-wrap gap-2">
-                        <button onClick={() => exportPacket(record, 'distrokid')} className="px-4 py-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-[10px] font-black uppercase tracking-wider">DistroKid Packet</button>
+                        <button onClick={() => exportPacket(record, 'labelgrid')} className="px-4 py-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-[10px] font-black uppercase tracking-wider">LabelGrid Packet</button>
+                        <button onClick={() => exportPacket(record, 'distrokid')} className="px-4 py-2 rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] font-black uppercase tracking-wider">DistroKid Packet</button>
                         <button onClick={() => exportPacket(record, 'pro')} className="px-4 py-2 rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] font-black uppercase tracking-wider">PRO Packet</button>
                         <button onClick={() => exportPacket(record, 'mlc')} className="px-4 py-2 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-300 text-[10px] font-black uppercase tracking-wider">MLC Packet</button>
                         <button onClick={() => exportPacket(record, 'master_rights')} className="px-4 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[10px] font-black uppercase tracking-wider">Master Rights Packet</button>
                       </div>
                       <div className="flex flex-wrap gap-2 mt-3">
-                        <button onClick={() => queueAgent(record, 'distrokid')} className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-black uppercase tracking-wider">Queue DistroKid Agent</button>
+                        <button onClick={() => queueAgent(record, 'labelgrid')} className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-black uppercase tracking-wider">Queue LabelGrid Agent</button>
+                        <button onClick={() => queueAgent(record, 'distrokid')} className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-black uppercase tracking-wider">Queue DistroKid Agent</button>
                         <button onClick={() => queueAgent(record, 'pro')} className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-black uppercase tracking-wider">Queue PRO Agent</button>
                         <button onClick={() => queueAgent(record, 'mlc')} className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider">Queue MLC Agent</button>
                         <button onClick={() => queueAgent(record, 'master_rights')} className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider">Queue Master Rights Agent</button>
