@@ -19,6 +19,7 @@ const categoryIcon: Record<string, any> = {
 
 const modeLabel: Record<string, string> = {
   api: 'REAL API',
+  mcp: 'MCP',
   browser_agent: 'BROWSER AGENT',
   adapter_needed: 'ADAPTER NEEDED',
   not_configured: 'NOT CONFIGURED',
@@ -29,7 +30,7 @@ const modeLabel: Record<string, string> = {
 
 const statusClass = (provider: IntegrationStatus) => {
   if (provider.real) return 'border-emerald-500/30 bg-emerald-500/5';
-  if (provider.mode === 'browser_agent') return 'border-violet-500/30 bg-violet-500/5';
+  if (provider.mode === 'mcp' || provider.mode === 'browser_agent') return 'border-violet-500/30 bg-violet-500/5';
   if (provider.mode === 'retiring') return 'border-rose-500/30 bg-rose-500/5';
   if (provider.configured) return 'border-amber-500/30 bg-amber-500/5';
   return 'border-slate-800 bg-slate-950';
@@ -125,7 +126,7 @@ export const IntegrationCenter: React.FC = () => {
                   </div>
                   <span className={`text-[8px] uppercase tracking-widest font-black px-2 py-1 rounded-full border ${
                     provider.real ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10' :
-                    provider.mode === 'browser_agent' ? 'text-violet-300 border-violet-500/30 bg-violet-500/10' :
+                    (provider.mode === 'browser_agent' || provider.mode === 'mcp') ? 'text-violet-300 border-violet-500/30 bg-violet-500/10' :
                     provider.mode === 'retiring' ? 'text-rose-300 border-rose-500/30 bg-rose-500/10' :
                     provider.configured ? 'text-amber-300 border-amber-500/30 bg-amber-500/10' :
                     'text-slate-500 border-slate-700 bg-slate-900'
