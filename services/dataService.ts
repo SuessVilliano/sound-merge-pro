@@ -2,7 +2,7 @@
 import { collection, addDoc, query, where, orderBy, serverTimestamp, deleteDoc, doc, onSnapshot, Unsubscribe, limit, updateDoc, getDocs, setDoc, getDoc } from 'firebase/firestore';
 import { db } from './firebase';
 import { GeneratedTrack } from './audioService';
-import { VoiceAsset, User, Stats, DistributionSubmission, SyncBrief, OpportunityRequest, FundingRequest, DistributionRelease, LegalRecord, VideoGenerationJob } from '../types';
+import { VoiceAsset, User, Stats, DistributionSubmission, SyncBrief, OpportunityRequest, FundingRequest, DistributionRelease, LegalRecord, VideoGenerationJob, ReleaseRailRecord } from '../types';
 
 let isFirestoreRestricted = localStorage.getItem('sf_firestore_restricted') === 'true';
 
@@ -88,8 +88,8 @@ export const dataService = {
       const finalSubmission = {
           ...submission,
           id,
-          status: 'submitted',
-          createdAt: new Date().toISOString()
+          status: submission.status || 'draft',
+          createdAt: submission.createdAt || new Date().toISOString()
       };
       if (!isFirestoreRestricted) {
           try { await setDoc(doc(db, 'distribution_ledger', id), finalSubmission); }
@@ -119,6 +119,60 @@ export const dataService = {
           try { await updateDoc(doc(db, 'distribution_ledger', id), { status }); }
           catch (e: any) { handleFirestoreError(e); }
       }
+  },
+
+  // --- RELEASE RAILS: canonical release/source-of-truth records ---
+  async saveReleaseRail(record: ReleaseRailRecord): Promise<void> {
+      if (isFirestoreRestricted) {
+          const key = `sf_release_rails_${record.userId}`;
+          const current = JSON.parse(localStorage.getItem(key) || '[]') as ReleaseRailRecord[];
+          const next = [record, ...current.filter(r => r.id !== record.id)];
+          localStorage.setItem(key, JSON.stringify(next));
+          return;
+      }
+      try {
+          await setDoc(doc(db, 'release_rails', record.id), { ...record, updatedAt: new Date().toISOString() });
+      } catch (e: any) { handleFirestoreError(e); }
+  },
+
+  async getReleaseRails(userId: string): Promise<ReleaseRailRecord[]> {
+      if (isFirestoreRestricted) {
+          try { return JSON.parse(localStorage.getItem(`sf_release_rails_${userId}`) || '[]'); }
+          catch { return []; }
+      }
+      try {
+          const qry = query(collection(db, 'release_rails'), where('userId', '==', userId), orderBy('updatedAt', 'desc'));
+          const snap = await getDocs(qry);
+          return snap.docs.map(d => d.data() as ReleaseRailRecord);
+      } catch (e: any) { handleFirestoreError(e); return []; }
+  },
+
+  async updateReleaseRail(id: string, patch: Partial<ReleaseRailRecord>, userId?: string): Promise<void> {
+      const updatedAt = new Date().toISOString();
+      if (isFirestoreRestricted) {
+          if (!userId) return;
+          const key = `sf_release_rails_${userId}`;
+          const current = JSON.parse(localStorage.getItem(key) || '[]') as ReleaseRailRecord[];
+          const next = current.map(r => r.id === id ? { ...r, ...patch, updatedAt } : r);
+          localStorage.setItem(key, JSON.stringify(next));
+          return;
+      }
+      try { await updateDoc(doc(db, 'release_rails', id), { ...patch, updatedAt }); }
+      catch (e: any) { handleFirestoreError(e); }
+  },
+
+  subscribeToReleaseRails(userId: string, callback: (records: ReleaseRailRecord[]) => void): Unsubscribe {
+      if (isFirestoreRestricted) {
+          this.getReleaseRails(userId).then(callback);
+          return () => {};
+      }
+      try {
+          const qry = query(collection(db, 'release_rails'), where('userId', '==', userId), orderBy('updatedAt', 'desc'));
+          return onSnapshot(qry, snap => callback(snap.docs.map(d => d.data() as ReleaseRailRecord)), err => {
+              handleFirestoreError(err);
+              callback([]);
+          });
+      } catch (e: any) { handleFirestoreError(e); callback([]); return () => {}; }
   },
 
   async getAllReleases(): Promise<DistributionRelease[]> { return []; },
