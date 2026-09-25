@@ -120,6 +120,9 @@ export const ReleaseRails: React.FC = () => {
     const splitsConfirmed = writers.length > 0 && writers.every(w => w.share > 0) && Math.abs(writers.reduce((sum, w) => sum + w.share, 0) - 100) < 0.01;
     const samplesCleared = window.confirm('Confirm that the release contains no uncleared samples/covers.');
     const voiceLikenessCleared = window.confirm('Confirm that all voice/likeness use is authorized.');
+    const humanAuthorshipNotes = record.rights.aiAssisted
+      ? (window.prompt('For AI-assisted music, briefly record the human-authored contribution (lyrics, composition, arrangement, edits, performance, etc.):', record.rights.humanAuthorshipNotes || '') || record.rights.humanAuthorshipNotes)
+      : record.rights.humanAuthorshipNotes;
 
     const rights = {
       ...record.rights,
@@ -128,7 +131,8 @@ export const ReleaseRails: React.FC = () => {
       writers,
       splitsConfirmed,
       samplesCleared,
-      voiceLikenessCleared
+      voiceLikenessCleared,
+      humanAuthorshipNotes
     };
 
     const complete = Boolean(masterOwner && publishingAdmin && splitsConfirmed && samplesCleared && voiceLikenessCleared);
