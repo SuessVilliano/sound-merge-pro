@@ -1,7 +1,5 @@
-
 import { format, subDays } from 'date-fns';
-
-// --- Types ---
+import { auth } from './firebase';
 
 export interface MetricStats {
   date: string;
@@ -49,7 +47,7 @@ export interface PlaylistInfo {
 export interface RevenueBreakdown {
   source: string;
   amount: number;
-  color: string;
+  color?: string;
 }
 
 export interface ChartmetricArtist {
@@ -69,110 +67,199 @@ export interface ChartmetricTrackResult {
   code2?: string;
 }
 
-// --- API Configuration ---
+export interface ArtistAnalyticsResult {
+  dailyStats: MetricStats[];
+  platforms: PlatformData[];
+  topTracks: ChartmetricTrack[];
+  demographics: Demographics;
+  playlists: PlaylistInfo[];
+  revenue: RevenueBreakdown[];
+  source: 'chartmetric' | 'none';
+  artist?: any;
+  message?: string;
+}
 
-const REFRESH_TOKEN = process.env.CHARTMETRIC_REFRESH_TOKEN; 
-const BASE_URL = "https://api.chartmetric.com/api";
-
-let cachedToken: string | null = null;
-let tokenExpiry: number = 0;
-
-const getAccessToken = async (): Promise<string | null> => {
-  if (!REFRESH_TOKEN) return null;
-  if (cachedToken && Date.now() < tokenExpiry - 60000) return cachedToken;
-
-  try {
-    const response = await fetch(`${BASE_URL}/token`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshtoken: REFRESH_TOKEN })
-    });
-    if (!response.ok) return null;
-    const data = await response.json();
-    cachedToken = data.token;
-    tokenExpiry = Date.now() + (data.expires_in * 1000);
-    return cachedToken;
-  } catch (error) {
-    return null;
-  }
+const headers = async () => {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) throw new Error('Sign in to use Chartmetric.');
+  return { Authorization: `Bearer ${token}` };
 };
 
-const cmFetch = async (endpoint: string) => {
-    const token = await getAccessToken();
-    if (!token) return null;
+const api = async (params: Record<string, string | number | undefined>) => {
+  const qs = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') qs.set(key, String(value));
+  });
 
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (!response.ok) return null;
-    return response.json();
+  const response = await fetch(`/api/chartmetric?${qs.toString()}`, {
+    headers: await headers()
+  });
+  const data = await response.json();
+  if (!response.ok) throw new Error(data?.error || 'Chartmetric request failed.');
+  return data;
+};
+
+const unwrapArray = (value: any): any[] => {
+  if (Array.isArray(value)) return value;
+  if (Array.isArray(value?.data)) return value.data;
+  if (Array.isArray(value?.items)) return value.items;
+  if (Array.isArray(value?.stats)) return value.stats;
+  return [];
+};
+
+const latestNumeric = (value: any): number | undefined => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const rows = unwrapArray(value);
+  for (let i = rows.length - 1; i >= 0; i--) {
+    const row = rows[i];
+    const candidates = [row?.value, row?.followers, row?.listeners, row?.monthly_listeners, row?.count];
+    const hit = candidates.find(v => typeof v === 'number' && Number.isFinite(v));
+    if (typeof hit === 'number') return hit;
+  }
+  return undefined;
+};
+
+const getSeries = (spotify: any, key: 'listeners' | 'followers') => {
+  const direct = spotify?.[key];
+  if (Array.isArray(direct)) return direct;
+  if (Array.isArray(direct?.data)) return direct.data;
+  if (Array.isArray(spotify?.stats?.[key])) return spotify.stats[key];
+  if (Array.isArray(spotify?.data?.[key])) return spotify.data[key];
+  return [];
+};
+
+const dateOf = (row: any) => String(row?.date || row?.timestamp || row?.timestp || row?.day || '').slice(0, 10);
+const valueOf = (row: any, key: string) => {
+  const candidates = [row?.value, row?.[key], row?.count, row?.total];
+  const hit = candidates.find(v => typeof v === 'number' && Number.isFinite(v));
+  return typeof hit === 'number' ? hit : 0;
 };
 
 export const searchArtists = async (query: string): Promise<ChartmetricArtist[]> => {
-    if (!query || query.length < 2) return [];
-
-    // Fallback known artists to make the app feel alive even without keys
-    const POPULAR_ARTISTS: ChartmetricArtist[] = [
-        { id: 112, name: 'The Weeknd', image_url: 'https://images.unsplash.com/photo-1629783509182-68c8c190e952?auto=format&fit=crop&w=100&q=80', is_verified: true, rank: 1 },
-        { id: 245, name: 'Taylor Swift', image_url: 'https://images.unsplash.com/photo-1544717297-fa15c3902727?auto=format&fit=crop&w=100&q=80', is_verified: true, rank: 2 },
-        { id: 501, name: 'Drake', image_url: 'https://images.unsplash.com/photo-1514525253440-b393452e8d26?auto=format&fit=crop&w=100&q=80', is_verified: true, rank: 5 }
-    ];
-
-    try {
-        // Increased limit from 5 to 15 for better scrolling coverage
-        const response = await cmFetch(`/search?q=${encodeURIComponent(query)}&type=artists&limit=15`);
-        if (response?.obj?.artists) {
-            return response.obj.artists.map((a: any) => ({
-                id: a.id,
-                name: a.name,
-                image_url: a.image_url || 'https://picsum.photos/100',
-                is_verified: a.is_verified,
-                code2: a.code2
-            }));
-        }
-    } catch (e) {}
-
-    // Smart Local Fallback
-    return POPULAR_ARTISTS.filter(a => a.name.toLowerCase().includes(query.toLowerCase()));
+  if (!query || query.length < 2) return [];
+  try {
+    const response = await api({ action: 'search', q: query, type: 'artists' });
+    const artists = response?.obj?.artists || response?.artists || [];
+    return artists.map((a: any) => ({
+      id: Number(a.id),
+      name: a.name,
+      image_url: a.image_url || a.image || `https://ui-avatars.com/api/?name=${encodeURIComponent(a.name || 'Artist')}`,
+      is_verified: Boolean(a.is_verified),
+      code2: a.code2,
+      rank: a.rank
+    })).filter((a: ChartmetricArtist) => Number.isFinite(a.id));
+  } catch (error) {
+    console.warn('[Chartmetric] Artist search unavailable:', error);
+    return [];
+  }
 };
 
 export const searchTracks = async (query: string): Promise<ChartmetricTrackResult[]> => {
-    if (!query || query.length < 2) return [];
-    try {
-        const response = await cmFetch(`/search?q=${encodeURIComponent(query)}&type=tracks&limit=10`);
-        if (response?.obj?.tracks) {
-            return response.obj.tracks.map((t: any) => ({
-                id: t.id,
-                name: t.name,
-                artist_names: t.artist_names || ['Unknown Artist'],
-                image_url: t.image_url || 'https://picsum.photos/100',
-                code2: t.isrc
-            }));
-        }
-    } catch (e) {}
+  if (!query || query.length < 2) return [];
+  try {
+    const response = await api({ action: 'search', q: query, type: 'tracks' });
+    const tracks = response?.obj?.tracks || response?.tracks || [];
+    return tracks.map((t: any) => ({
+      id: Number(t.id),
+      name: t.name,
+      artist_names: t.artist_names || t.artists || ['Unknown Artist'],
+      image_url: t.image_url || t.image || '',
+      code2: t.isrc || t.code2
+    })).filter((t: ChartmetricTrackResult) => Number.isFinite(t.id));
+  } catch (error) {
+    console.warn('[Chartmetric] Track search unavailable:', error);
     return [];
+  }
 };
 
-export const fetchArtistAnalytics = async (timeRange: string = '30d', specificArtistId?: number): Promise<any> => {
-    const days = timeRange === '7d' ? 7 : timeRange === '90d' ? 90 : 30;
-    const stats: MetricStats[] = Array.from({ length: days }).map((_, i) => ({
-        date: format(subDays(new Date(), days - i), 'MMM d'),
-        streams: Math.floor(5000 + Math.random() * 10000),
-        listeners: Math.floor(2000 + Math.random() * 5000),
-        followers: Math.floor(1000 + Math.random() * 200)
-    }));
-
+export const fetchArtistAnalytics = async (
+  timeRange: string = '30d',
+  specificArtistId?: number
+): Promise<ArtistAnalyticsResult> => {
+  if (!specificArtistId) {
     return {
-        dailyStats: stats,
-        platforms: [
-            { platform: 'Spotify', followers: 120000, monthly_listeners: 450000 },
-            { platform: 'TikTok', followers: 89000, engagement_rate: '4.5%' }
-        ],
-        topTracks: [
-            { id: 't1', title: 'Starboy', image: 'https://picsum.photos/100/100?random=1', streams: 1200000, releaseDate: '2023', playlists: 45 }
-        ],
-        demographics: { age: [], gender: [], locations: [] },
-        playlists: [],
-        revenue: [{ source: 'Streaming', amount: 3450, color: '#06b6d4' }]
+      dailyStats: [],
+      platforms: [],
+      topTracks: [],
+      demographics: { age: [], gender: [], locations: [] },
+      playlists: [],
+      revenue: [],
+      source: 'none',
+      message: 'Select an artist from search to load verified Chartmetric analytics.'
     };
+  }
+
+  const days = timeRange === '7d' ? 7 : timeRange === '90d' ? 90 : timeRange === '1y' ? 365 : 30;
+  const since = format(subDays(new Date(), days), 'yyyy-MM-dd');
+  const until = format(new Date(), 'yyyy-MM-dd');
+
+  const response = await api({
+    action: 'artist-analytics',
+    id: specificArtistId,
+    since,
+    until
+  });
+
+  const listeners = getSeries(response.spotify, 'listeners');
+  const followers = getSeries(response.spotify, 'followers');
+  const byDate = new Map<string, MetricStats>();
+
+  listeners.forEach((row: any) => {
+    const date = dateOf(row);
+    if (!date) return;
+    byDate.set(date, {
+      date: format(new Date(date + 'T12:00:00'), 'MMM d'),
+      streams: 0,
+      listeners: valueOf(row, 'listeners'),
+      followers: 0
+    });
+  });
+
+  followers.forEach((row: any) => {
+    const date = dateOf(row);
+    if (!date) return;
+    const existing = byDate.get(date) || {
+      date: format(new Date(date + 'T12:00:00'), 'MMM d'),
+      streams: 0,
+      listeners: 0,
+      followers: 0
+    };
+    existing.followers = valueOf(row, 'followers');
+    byDate.set(date, existing);
+  });
+
+  const latest = response?.cmStats?.latest || response?.cmStats || {};
+  const platformRows: PlatformData[] = [];
+
+  const spotifyFollowers = latestNumeric(latest?.sp_followers ?? latest?.spotify_followers ?? followers);
+  const spotifyListeners = latestNumeric(latest?.sp_monthly_listeners ?? latest?.spotify_monthly_listeners ?? listeners);
+  if (spotifyFollowers !== undefined || spotifyListeners !== undefined) {
+    platformRows.push({
+      platform: 'Spotify',
+      followers: spotifyFollowers || 0,
+      monthly_listeners: spotifyListeners
+    });
+  }
+
+  const tiktokFollowers = latestNumeric(latest?.tiktok_followers);
+  if (tiktokFollowers !== undefined) platformRows.push({ platform: 'TikTok', followers: tiktokFollowers });
+
+  const youtubeFollowers = latestNumeric(latest?.ycs_subscribers ?? latest?.youtube_subscribers);
+  if (youtubeFollowers !== undefined) platformRows.push({ platform: 'YouTube', followers: youtubeFollowers });
+
+  const instagramFollowers = latestNumeric(latest?.ins_followers ?? latest?.instagram_followers);
+  if (instagramFollowers !== undefined) platformRows.push({ platform: 'Instagram', followers: instagramFollowers });
+
+  return {
+    dailyStats: Array.from(byDate.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([, value]) => value),
+    platforms: platformRows,
+    topTracks: [],
+    demographics: { age: [], gender: [], locations: [] },
+    playlists: [],
+    revenue: [],
+    source: 'chartmetric',
+    artist: response.artist
+  };
 };
