@@ -3,7 +3,7 @@ import React from 'react';
 import { 
     Music, Wand2, Mic, Disc, Zap, Briefcase, Swords, Radio, 
     DollarSign, MapPin, Mail, Landmark, Wallet, BarChart2, Star, 
-    Vote, Activity, Lock, CheckCircle2, ChevronRight, Sparkles, LayoutGrid, Globe
+    Vote, Activity, Lock, CheckCircle2, ChevronRight, Sparkles, LayoutGrid, Globe, Video, Bot
 } from 'lucide-react';
 import { NAVIGATION_ITEMS, VIEWS } from '../constants';
 import { authService } from '../services/authService';
@@ -25,7 +25,7 @@ const CATEGORIES = [
 const ICON_MAP: Record<string, any> = {
   Music, Wand2, Mic, Disc, Zap, Briefcase, Swords, Radio, 
   DollarSign, MapPin, Mail, Landmark, Wallet, BarChart2, Star, 
-  Vote, Activity, Grid: LayoutGrid
+  Vote, Activity, Video, Bot, Grid: LayoutGrid
 };
 
 export const AllToolsView: React.FC<AllToolsViewProps> = ({ stats, onNavigate, onUpgrade }) => {
@@ -48,11 +48,11 @@ export const AllToolsView: React.FC<AllToolsViewProps> = ({ stats, onNavigate, o
     };
 
     const categorizedTools = {
-        creative: NAVIGATION_ITEMS.filter(t => [VIEWS.STUDIO, VIEWS.MASTERING, VIEWS.MY_MUSIC].includes(t.id)),
+        creative: NAVIGATION_ITEMS.filter(t => [VIEWS.STUDIO, VIEWS.VISUAL_STUDIO, VIEWS.MASTERING, VIEWS.MY_MUSIC].includes(t.id)),
         // Fixed: Renamed VIEWS.FUNDING to VIEWS.ADVANCES
         business: NAVIGATION_ITEMS.filter(t => [VIEWS.CRM, VIEWS.ADVANCES, VIEWS.SMART_WALLET, VIEWS.AFFILIATES].includes(t.id)),
-        protection: NAVIGATION_ITEMS.filter(t => [VIEWS.VOICE, VIEWS.DAO, VIEWS.MONITORING].includes(t.id)),
-        growth: NAVIGATION_ITEMS.filter(t => [VIEWS.OPPORTUNITIES, VIEWS.BRAND, VIEWS.BATTLES, VIEWS.DISTRIBUTION, VIEWS.TOURING, VIEWS.ANALYTICS, VIEWS.AR_DASHBOARD].includes(t.id)),
+        protection: NAVIGATION_ITEMS.filter(t => [VIEWS.VOICE, VIEWS.RELEASE_RAILS, VIEWS.DAO, VIEWS.MONITORING].includes(t.id)),
+        growth: NAVIGATION_ITEMS.filter(t => [VIEWS.OPPORTUNITIES, VIEWS.BRAND, VIEWS.BATTLES, VIEWS.DISTRIBUTION, VIEWS.TOURING, VIEWS.ANALYTICS, VIEWS.AR_DASHBOARD, VIEWS.INTEGRATIONS, VIEWS.MCP_HUB].includes(t.id)),
     };
 
     return (
@@ -147,7 +147,8 @@ export const AllToolsView: React.FC<AllToolsViewProps> = ({ stats, onNavigate, o
 // Helper descriptions for the Lab
 function getToolDescription(view: string): string {
     const desc: Record<string, string> = {
-        [VIEWS.STUDIO]: "Multi-node neural music generation for lyrics, composition, and high-fidelity production.",
+        [VIEWS.STUDIO]: "Idea-to-song workspace for prompts, lyrics, AI/human creation and real generation providers.",
+        [VIEWS.VISUAL_STUDIO]: "Higgsfield-first visual workflow for consistent artist identity, music videos, lip sync and performance.",
         [VIEWS.MASTERING]: "Institutional-grade AI audio post-production and LUFS optimization for global stores.",
         [VIEWS.MY_MUSIC]: "Your private ledger of all forged assets, masters, and on-chain registrations.",
         [VIEWS.CRM]: "Automated fan registry and unified messaging node for SMS, Email, and WhatsApp.",
@@ -155,14 +156,17 @@ function getToolDescription(view: string): string {
         [VIEWS.ADVANCES]: "Access non-recourse capital advances based on your verified catalog performance.",
         [VIEWS.SMART_WALLET]: "Institutional digital account for managing rights liquidity and royalty settlements.",
         [VIEWS.AFFILIATES]: "Expand your network and earn recurring revenue through professional partnerships.",
-        [VIEWS.VOICE]: "Biometric vocal fingerprinting and on-chain ID protection against unauthorized clones.",
+        [VIEWS.VOICE]: "Voice-rights workspace. Provider-backed fingerprinting and licensing activate only when connected.",
+        [VIEWS.RELEASE_RAILS]: "Canonical release record connecting masters, metadata, splits, distribution, rights registrations and live links.",
         [VIEWS.DAO]: "Participate in ecosystem governance and vote on platform development protocols.",
         [VIEWS.OPPORTUNITIES]: "Direct synchronization with global sync briefs from film, games, and advertising.",
         [VIEWS.BRAND]: "Neural visual engines for hyper-realistic promo videos and social marketing assets.",
         [VIEWS.BATTLES]: "Identity-verified arena for competitive benchmarking and reputation yield.",
-        [VIEWS.DISTRIBUTION]: "Deploy assets to 150+ global stores while maintaining 100% rights ownership.",
+        [VIEWS.DISTRIBUTION]: "Prepare and route releases to verified distributor APIs or approval-gated browser workflows.",
         [VIEWS.TOURING]: "AI venue discovery and routing engine for global live performance deployments.",
-        [VIEWS.ANALYTICS]: "Consolidated real-time industry signals from all major platform ledgers.",
+        [VIEWS.ANALYTICS]: "Provider-backed artist intelligence from connected analytics sources such as Chartmetric.",
+        [VIEWS.INTEGRATIONS]: "See which providers are truly connected and whether they use API, MCP, browser automation or setup-required rails.",
+        [VIEWS.MCP_HUB]: "Connect ChatGPT, Grokbot, Cursor, Claude and other MCP agents to Sound Merge as the artist operating layer.",
         [VIEWS.AR_DASHBOARD]: "Institutional trend spotting and talent identification via global Billboard nodes."
     };
     return desc[view] || "Advanced music industry operational module.";
