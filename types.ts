@@ -151,6 +151,84 @@ export interface DistributionSubmission {
     metadata: any;
 }
 
+
+export type ReleaseRailState = 'pending' | 'ready' | 'submitted' | 'complete' | 'review' | 'blocked' | 'not_applicable';
+export type ReleaseType = 'Single' | 'EP' | 'Album';
+
+export interface ReleaseRailStep {
+  state: ReleaseRailState;
+  updatedAt?: string;
+  confirmationId?: string;
+  note?: string;
+}
+
+export interface ReleaseWriter {
+  id: string;
+  legalName: string;
+  role: 'Songwriter' | 'Composer';
+  share: number;
+  ipiCae?: string;
+  pro?: 'BMI' | 'ASCAP' | 'SESAC' | 'SOCAN' | 'PRS' | 'GEMA' | 'SACEM' | 'Other' | 'None';
+  publisherName?: string;
+  publisherIpi?: string;
+}
+
+export interface ReleaseRailRecord {
+  id: string;
+  userId: string;
+  releaseId: string;
+  assetIds: string[];
+  title: string;
+  artistName: string;
+  releaseType: ReleaseType;
+  releaseDate: string;
+  recordLabel: string;
+  primaryGenre: string;
+  coverUrl?: string;
+  distributor: 'DistroKid' | 'Other' | 'Unselected';
+  createdAt: string;
+  updatedAt: string;
+  sourceSubmissionId?: string;
+
+  identifiers: {
+    upc?: string;
+    isrcByAssetId: Record<string, string>;
+    distributorReleaseId?: string;
+  };
+
+  rights: {
+    masterOwner?: string;
+    publishingAdmin?: string;
+    writers: ReleaseWriter[];
+    splitsConfirmed: boolean;
+    samplesCleared: boolean;
+    voiceLikenessCleared: boolean;
+    aiAssisted: boolean;
+    humanAuthorshipNotes?: string;
+  };
+
+  links: {
+    spotify?: string;
+    appleMusic?: string;
+    youtubeMusic?: string;
+    other?: string;
+  };
+
+  rails: {
+    created: ReleaseRailStep;
+    mastered: ReleaseRailStep;
+    metadata: ReleaseRailStep;
+    rights: ReleaseRailStep;
+    distribution: ReleaseRailStep;
+    identifiers: ReleaseRailStep;
+    pro: ReleaseRailStep;
+    mlc: ReleaseRailStep;
+    masterRights: ReleaseRailStep;
+    live: ReleaseRailStep;
+    royalties: ReleaseRailStep;
+  };
+}
+
 export interface VoiceAsset {
   token_id: string;
   voice_id: string; 
