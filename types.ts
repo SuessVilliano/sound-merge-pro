@@ -193,6 +193,9 @@ export interface ReleaseRailRecord {
   identifiers: {
     upc?: string;
     isrcByAssetId: Record<string, string>;
+    iswcByAssetId?: Record<string, string>;
+    musicBrainzRecordingIdByAssetId?: Record<string, string>;
+    musicBrainzReleaseId?: string;
     distributorReleaseId?: string;
   };
 
