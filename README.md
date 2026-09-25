@@ -33,3 +33,21 @@ Consolidated messaging for SMS, WhatsApp, Email, and Social DMs with AI-assisted
 Built on institutional rails with AES-256 encryption. All assets are anchored to the ledger to ensure 100% sovereign artist ownership.
 
 © 2025 Sound Merge Inc. | The Rails for the Next Era of Music.
+
+
+## Release Rails
+
+Release Rails is the canonical release operating system for Sound Merge. A staged release now creates one source-of-truth record that tracks:
+
+- master approval
+- metadata QA
+- rights, writer splits, IPI/CAE and PRO details
+- DistroKid submission state
+- distributor-assigned ISRC/UPC reconciliation
+- PRO registration
+- The MLC registration
+- master-side rights administration
+- live store links
+- royalty-monitoring readiness
+
+Provider-ready JSON packets can be exported for DistroKid, PRO, The MLC and master-rights workflows. External submissions remain confirmation-gated so Sound Merge never reports a filing as complete before it actually happens.
