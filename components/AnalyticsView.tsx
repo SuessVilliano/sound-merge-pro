@@ -5,7 +5,6 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell
 } from 'recharts';
 import { fetchArtistAnalytics, MetricStats, PlatformData, ChartmetricTrack, Demographics, PlaylistInfo, RevenueBreakdown } from '../services/chartmetricService';
-import { RapidApiAgent } from '../services/rapidApiService';
 import { User } from '../types';
 
 // Custom Tooltip Component
@@ -42,10 +41,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
   const [loading, setLoading] = useState(false);
   const [timeRange, setTimeRange] = useState('30d');
   
-  // Real-time API State
-  const [realStreamCount, setRealStreamCount] = useState<number | null>(null);
-  const [loadingRealData, setLoadingRealData] = useState(false);
-
   const [data, setData] = useState<{
     dailyStats: MetricStats[];
     platforms: PlatformData[];
@@ -56,34 +51,34 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
   } | null>(null);
 
   const [connectedSources, setConnectedSources] = useState<Record<string, boolean>>({
-    'Official Ledgers': true,
-    'Spotify Node': true,
+    'Chartmetric': true,
+    'Spotify': true,
     'Apple Music': false,
-    'TikTok Node': true,
-    'YouTube Node': true
+    'TikTok': true,
+    'YouTube': true
   });
   
   const isPro = user.plan !== 'free';
 
   const loadData = async (range: string = timeRange, id?: number) => {
     setLoading(true);
-    setLoadingRealData(true);
     try {
-      // 1. Load Aggregate Data
       const result = await fetchArtistAnalytics(range, id);
       setData(result);
-
-      // 2. Fetch REAL-TIME Signals from RapidAPI Nodes
-      // We simulate picking the top track to verify
-      const topTrackId = '6ho0GyrWZN3mhi9zVRW7xi'; 
-      const realStreams = await RapidApiAgent.getVerifiedStreamCount(topTrackId);
-      if (realStreams) setRealStreamCount(realStreams);
-
     } catch (e) {
       console.error(e);
+      setData({
+        dailyStats: [],
+        platforms: [],
+        topTracks: [],
+        demographics: { age: [], gender: [], locations: [] },
+        playlists: [],
+        revenue: [],
+        source: 'none',
+        message: e instanceof Error ? e.message : 'Analytics provider unavailable.'
+      } as any);
     } finally {
       setLoading(false);
-      setLoadingRealData(false);
     }
   };
 
@@ -97,9 +92,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
 
   const isSourceVisible = (platformName: string) => {
       const map: Record<string, string> = {
-          'Spotify': 'Spotify Node',
-          'TikTok': 'TikTok Node',
-          'YouTube': 'YouTube Node',
+          'Spotify': 'Spotify',
+          'TikTok': 'TikTok',
+          'YouTube': 'YouTube',
           'Apple Music': 'Apple Music'
       };
       const key = map[platformName];
@@ -122,13 +117,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
        <div className="flex justify-between items-start">
          <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-                Industry Signals & Insights
-                <span className="text-[10px] bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 px-2 py-0.5 rounded font-bold uppercase tracking-wide">Real-time Sync</span>
+                Verified Artist Signals
+                <span className="text-[10px] bg-gradient-to-r from-cyan-500 to-blue-500 text-slate-950 px-2 py-0.5 rounded font-bold uppercase tracking-wide">Provider Data</span>
             </h1>
             <p className="text-slate-400 text-sm mt-1">
                 {artistId 
                     ? `Viewing analytics for Global Artist Node: ${artistId}`
-                    : "Aggregated performance data from Spotify, Songstats, and Billboard ledgers."
+                    : "Search for an artist and select the Chartmetric result to load provider-backed analytics."
                 }
             </p>
          </div>
@@ -158,15 +153,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
                   <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></div>
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-                  {loadingRealData ? (
-                      <span className="animate-pulse">Fetching...</span>
-                  ) : realStreamCount ? (
-                      realStreamCount.toLocaleString()
-                  ) : (
-                      "952,400"
-                  )}
+                  {data.platforms.find(p => p.platform === 'Spotify')?.monthly_listeners?.toLocaleString() || '—'}
               </div>
-              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Live Playback Count</div>
+              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Spotify Monthly Listeners</div>
           </div>
 
           {/* FOLLOWERS (Consolidated) */}
@@ -179,9 +168,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Growth Node</span>
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-                  {data.platforms.find(p => p.platform === 'TikTok')?.followers?.toLocaleString() || "12,850"}
+                  {data.platforms.reduce((sum, p) => sum + (p.followers || 0), 0).toLocaleString() || '—'}
               </div>
-              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Cross-Platform Fans</div>
+              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Provider-Reported Followers</div>
           </div>
 
            {/* REVENUE ESTIMATE */}
@@ -194,9 +183,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Yield Potential</span>
               </div>
               <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-                  ${data.revenue.reduce((a, b) => a + b.amount, 0).toLocaleString()}
+                  {data.revenue.length ? `${data.revenue.reduce((a, b) => a + b.amount, 0).toLocaleString()}` : '—'}
               </div>
-              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Gross Yield (30D)</div>
+              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Revenue Data (when connected)</div>
           </div>
 
            {/* ENGAGEMENT (ScrapTik Simulation) */}
@@ -208,8 +197,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
                   <Users className="w-4 h-4 text-yellow-400" />
                   <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Pulse Velocity</span>
               </div>
-              <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">4.8%</div>
-              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">TikTok Engagement</div>
+              <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">—</div>
+              <div className="text-[10px] text-slate-500 uppercase font-black tracking-widest mt-1">Engagement (provider pending)</div>
           </div>
       </div>
 
@@ -218,8 +207,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
           <div className="lg:col-span-2 bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 p-8 min-h-[400px] shadow-sm">
               <div className="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
                   <div>
-                     <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight italic">Institutional Growth Arc</h3>
-                     <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">Aggregate Stream Signals across all major platform ledgers</p>
+                     <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight italic">Spotify Audience History</h3>
+                     <p className="text-[10px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-widest">Chartmetric monthly listeners and follower history</p>
                   </div>
                   <div className="flex bg-slate-100 dark:bg-slate-900 rounded-xl p-1 border border-slate-200 dark:border-slate-800">
                       {['7d', '30d', '90d', '1y'].map(range => (
@@ -261,7 +250,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
                           <YAxis stroke="#64748b" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(value) => `${value/1000}k`} fontStyle="bold" />
                           <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#22d3ee', strokeWidth: 1, strokeDasharray: '3 3' }} />
                           <Area type="monotone" dataKey="streams" stroke="#06b6d4" strokeWidth={3} fillOpacity={1} fill="url(#colorStreams)" name="Streams" activeDot={{ r: 6, strokeWidth: 0, fill: '#06b6d4' }} />
-                          <Area type="monotone" dataKey="listeners" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorListeners)" name="Listeners" activeDot={{ r: 6, strokeWidth: 0, fill: '#8b5cf6' }} />
+                          <Area type="monotone" dataKey="listeners" stroke="#8b5cf6" strokeWidth={3} fillOpacity={1} fill="url(#colorListeners)" name="Followers" activeDot={{ r: 6, strokeWidth: 0, fill: '#8b5cf6' }} />
                       </AreaChart>
                   </ResponsiveContainer>
               </div>
@@ -270,7 +259,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
           {/* Connected Node Monitor */}
           <div className="bg-white dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-800 p-8 flex flex-col shadow-sm">
               <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight italic mb-2">Active Nodes</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Cross-verify signals for node validation</p>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-6">Visibility controls for available provider data</p>
               
               <div className="space-y-3 flex-1">
                   {Object.entries(connectedSources).map(([source, isConnected]) => (
@@ -290,10 +279,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({ user, onUpgrade, a
                   <div className="mt-8 p-5 bg-indigo-500/5 dark:bg-cyan-500/10 rounded-2xl border border-indigo-500/20 dark:border-cyan-500/20 shadow-inner">
                       <div className="flex items-center gap-3 mb-2">
                           <Activity className="w-5 h-5 text-indigo-500 dark:text-cyan-400" />
-                          <span className="text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-cyan-400 italic">Neural Validation Active</span>
+                          <span className="text-xs font-black uppercase tracking-widest text-indigo-600 dark:text-cyan-400 italic">Provider Validation</span>
                       </div>
                       <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed font-medium">
-                          Cross-referencing verified signals from Spotify (Playback API) and Songstats for non-repudiation audit logs.
+                          Only provider-backed values are displayed. Missing integrations remain blank instead of being filled with simulated numbers.
                       </p>
                   </div>
               </div>
