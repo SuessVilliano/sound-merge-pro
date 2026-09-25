@@ -27,6 +27,8 @@ export const VIEWS = {
   DISTRIBUTION: 'distribution',
   RELEASE_RAILS: 'release-rails',
   INTEGRATIONS: 'integrations',
+  VISUAL_STUDIO: 'visual-studio',
+  MCP_HUB: 'mcp-hub',
   DAO: 'dao',
   MONITORING: 'monitoring',
   SETTINGS: 'settings',
@@ -46,6 +48,7 @@ export const NAVIGATION_ITEMS = [
   { id: VIEWS.ALL_TOOLS, label: 'All Tools', icon: 'Grid', milestone: 'always' },
   { id: VIEWS.STAFF, label: 'AI Staff', icon: 'MessageSquare', ai: true, milestone: 'core' },
   { id: VIEWS.STUDIO, label: 'AI Studio', icon: 'Wand2', ai: true, milestone: 'core' },
+  { id: VIEWS.VISUAL_STUDIO, label: 'Visual Studio', icon: 'Video', ai: true, milestone: 'core' },
   { id: VIEWS.VOICE, label: 'Voice Market', icon: 'Mic', ai: true, milestone: 'core' },
   
   // UNLOCKS AFTER FIRST ASSET (XP > 0)
@@ -62,6 +65,7 @@ export const NAVIGATION_ITEMS = [
   { id: VIEWS.DISTRIBUTION, label: 'Distribution', icon: 'Radio', milestone: 'reputation_1000' },
   { id: VIEWS.RELEASE_RAILS, label: 'Release Rails', icon: 'Radio', milestone: 'core' },
   { id: VIEWS.INTEGRATIONS, label: 'Integration Center', icon: 'Activity', milestone: 'core' },
+  { id: VIEWS.MCP_HUB, label: 'MCP Hub', icon: 'Bot', ai: true, milestone: 'core' },
   { id: VIEWS.REVENUE, label: 'Revenue Recovery', icon: 'DollarSign', milestone: 'reputation_1000' },
   { id: VIEWS.TOURING, label: 'Gig Finder', icon: 'MapPin', milestone: 'reputation_1000' },
 
