@@ -45,11 +45,7 @@ export const RapidApiAgent = {
      * Aggregates results from multiple platform signals.
      */
     async globalSearch(query: string): Promise<any[]> {
-        const [spotifyResults, youtubeResults] = await Promise.all([
-            this.searchArtistProfiles(query),
-            this.searchYouTubeChannels(query)
-        ]);
-        return [...spotifyResults, ...youtubeResults];
+        return this.searchArtistProfiles(query);
     },
 
     /**
@@ -70,17 +66,10 @@ export const RapidApiAgent = {
     },
 
     /**
-     * SEARCH YOUTUBE CHANNELS
+     * YouTube discovery is intentionally disabled until a real YouTube data adapter is connected.
      */
-    async searchYouTubeChannels(query: string): Promise<any[]> {
-        const data = await this.fetchFromProxy(`/spotify-search?q=${encodeURIComponent(query)}&type=multi`);
-        return data?.artists?.items?.slice(0, 3).map((item: any) => ({
-            id: item.data.uri,
-            title: `${item.data.profile.name} Official`,
-            image: item.data.visuals.avatarImage?.sources[0]?.url,
-            subscribers: Math.floor(Math.random() * 500000),
-            source: 'YouTube'
-        })) || [];
+    async searchYouTubeChannels(_query: string): Promise<any[]> {
+        return [];
     },
 
     /**
