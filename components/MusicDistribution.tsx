@@ -90,7 +90,7 @@ export const MusicDistribution: React.FC = () => {
           { msg: "Validating release metadata and track identities...", time: 450 },
           { msg: "Reviewing ℗ / © ownership fields and songwriter credits...", time: 550 },
           { msg: "Creating canonical Sound Merge Release Record...", time: 450 },
-          { msg: "Preparing DistroKid-compatible metadata package...", time: 550 },
+          { msg: "Preparing provider-neutral release package for LabelGrid/API or browser-agent distribution...", time: 550 },
           { msg: "Setting ISRC / UPC capture points for post-submission reconciliation...", time: 450 },
           { msg: "Release Rails staged. External submission still requires confirmation.", time: 350 }
       ];
@@ -125,7 +125,7 @@ export const MusicDistribution: React.FC = () => {
       rail.rails.distribution = {
           state: 'ready',
           updatedAt: new Date().toISOString(),
-          note: 'DistroKid-compatible release package prepared. External submission is not yet confirmed.'
+          note: 'Release Rails package prepared. LabelGrid API/MCP is the preferred direct rail when connected; no external submission has happened yet.'
       };
       await dataService.saveReleaseRail(rail);
 
@@ -167,8 +167,8 @@ export const MusicDistribution: React.FC = () => {
           <div className="max-w-2xl mx-auto space-y-8 py-10 animate-in fade-in">
               <button onClick={() => setView('dashboard')} className="text-[10px] font-black uppercase text-slate-500 hover:text-white">← Back</button>
               <div className="text-center">
-                <h1 className="text-4xl font-black text-white uppercase tracking-tight italic">Deployment Format</h1>
-                <p className="text-slate-500 mt-2 font-medium">Select the structural hierarchy for this release node.</p>
+                <h1 className="text-4xl font-black text-white uppercase tracking-tight italic">Release Format</h1>
+                <p className="text-slate-500 mt-2 font-medium">Choose whether you are preparing a single, EP, or album.</p>
               </div>
               <div className="grid grid-cols-3 gap-4">
                   {[
@@ -246,7 +246,7 @@ export const MusicDistribution: React.FC = () => {
                                                   <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-slate-800 pb-2">Registry Codes</h5>
                                                   <div>
                                                       <label className="block text-[8px] font-black text-slate-600 uppercase mb-1">ISRC Code (Optional)</label>
-                                                      <input placeholder="Auto-Generate" value={track.isrc} onChange={e => updateTrack(track.id, 'isrc', e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-indigo-400 font-mono" />
+                                                      <input placeholder="Leave blank for distributor assignment" value={track.isrc} onChange={e => updateTrack(track.id, 'isrc', e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-indigo-400 font-mono" />
                                                   </div>
                                                   <div className="flex gap-4 pt-2">
                                                       <label className="flex items-center gap-2 cursor-pointer">
@@ -263,7 +263,7 @@ export const MusicDistribution: React.FC = () => {
                       </div>
 
                       <div className="pt-8 border-t border-slate-800 flex justify-end">
-                          <button onClick={handleSubmit} className="px-12 py-4 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-black uppercase tracking-[0.3em] rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 text-xs">Authorize Global Deployment</button>
+                          <button onClick={handleSubmit} className="px-12 py-4 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white font-black uppercase tracking-[0.3em] rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 text-xs">Stage in Release Rails</button>
                       </div>
                   </div>
               </div>
@@ -277,12 +277,12 @@ export const MusicDistribution: React.FC = () => {
           <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/dark-matter.png')] opacity-10 pointer-events-none"></div>
           <div className="relative z-10 max-w-3xl">
               <div className="inline-flex items-center gap-2 bg-indigo-500/10 border border-indigo-500/20 px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-indigo-400 mb-8">
-                  <Zap className="w-3 h-3 text-yellow-500 animate-pulse" /> AI Distribution Hub Sync: Active
+                  <Zap className="w-3 h-3 text-yellow-500 animate-pulse" /> Distribution & Royalty Rails
               </div>
               <h2 className="text-6xl font-black text-white tracking-tighter uppercase italic leading-[0.9] mb-6">Master <br/><span className="text-cyan-500">Distribution.</span></h2>
-              <p className="text-slate-400 text-xl font-medium leading-relaxed mb-10">Deploy your roster to 150+ stores via Sound Merge rails. Maintain total sovereign ownership of your ℗ and © lines.</p>
+              <p className="text-slate-400 text-xl font-medium leading-relaxed mb-10">Prepare your release once, then route it through a verified distributor. LabelGrid can provide API/MCP delivery plus downstream analytics and royalty data when connected; existing DistroKid users can use the approval-gated browser-agent route.</p>
               <div className="flex gap-4">
-                  <button onClick={() => setView('setup')} className="bg-white text-slate-950 px-10 py-4 rounded-full font-black uppercase tracking-[0.2em] text-xs shadow-2xl hover:scale-105 transition-all">Start New Deployment</button>
+                  <button onClick={() => setView('setup')} className="bg-white text-slate-950 px-10 py-4 rounded-full font-black uppercase tracking-[0.2em] text-xs shadow-2xl hover:scale-105 transition-all">Stage New Release</button>
                   <button onClick={() => setView('history')} className="bg-slate-800 text-white px-10 py-4 rounded-full font-black uppercase tracking-[0.2em] text-xs shadow-xl flex items-center gap-2 hover:bg-slate-700 transition-all"><History className="w-4 h-4" /> View Vault</button>
               </div>
           </div>
