@@ -97,6 +97,53 @@ export const ReleaseRails: React.FC = () => {
     await patchRecord(record, { identifiers, rails });
   };
 
+  const reviewRights = async (record: ReleaseRailRecord) => {
+    const masterOwner = window.prompt('Master / ℗ owner:', record.rights.masterOwner || '')?.trim() || record.rights.masterOwner;
+    const publishingAdmin = window.prompt('Publishing admin / © owner:', record.rights.publishingAdmin || '')?.trim() || record.rights.publishingAdmin;
+
+    let writers = [...record.rights.writers];
+    if (!writers.length) {
+      const legalName = window.prompt('Primary songwriter legal name:')?.trim();
+      if (legalName) {
+        writers = [{ id: `writer_${crypto.randomUUID()}`, legalName, role: 'Songwriter', share: 100 }];
+      }
+    }
+
+    writers = writers.map(writer => {
+      const shareRaw = window.prompt(`Writer share % for ${writer.legalName}:`, String(writer.share || 0));
+      const share = shareRaw === null ? writer.share : Number(shareRaw);
+      const ipiCae = window.prompt(`IPI/CAE for ${writer.legalName} (optional):`, writer.ipiCae || '') || writer.ipiCae;
+      const proRaw = window.prompt(`PRO for ${writer.legalName} (BMI, ASCAP, SESAC, SOCAN, PRS, GEMA, SACEM, Other, None):`, writer.pro || '') || writer.pro;
+      return { ...writer, share: Number.isFinite(share) ? share : writer.share, ipiCae: ipiCae || undefined, pro: proRaw as any };
+    });
+
+    const splitsConfirmed = writers.length > 0 && writers.every(w => w.share > 0) && Math.abs(writers.reduce((sum, w) => sum + w.share, 0) - 100) < 0.01;
+    const samplesCleared = window.confirm('Confirm that the release contains no uncleared samples/covers.');
+    const voiceLikenessCleared = window.confirm('Confirm that all voice/likeness use is authorized.');
+
+    const rights = {
+      ...record.rights,
+      masterOwner,
+      publishingAdmin,
+      writers,
+      splitsConfirmed,
+      samplesCleared,
+      voiceLikenessCleared
+    };
+
+    const complete = Boolean(masterOwner && publishingAdmin && splitsConfirmed && samplesCleared && voiceLikenessCleared);
+    const rails = {
+      ...record.rails,
+      rights: {
+        state: complete ? 'complete' as const : 'review' as const,
+        updatedAt: new Date().toISOString(),
+        note: complete ? 'Rights and split review confirmed by user.' : 'Rights review still has unresolved items.'
+      }
+    };
+
+    await patchRecord(record, { rights, rails });
+  };
+
   const markRegistration = async (record: ReleaseRailRecord, key: 'pro' | 'mlc' | 'masterRights', label: string) => {
     const confirmationId = window.prompt(`${label} confirmation/work ID (optional):`) || undefined;
     await setStep(record, key, 'complete', `${label} registration confirmed by user.`, confirmationId);
@@ -224,6 +271,10 @@ export const ReleaseRails: React.FC = () => {
                       {record.rails.mastered.state !== 'complete' && (
                         <button onClick={() => setStep(record, 'mastered', 'complete', 'Final master confirmed by user.')} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider">Confirm Master</button>
                       )}
+                      {record.rails.metadata.state !== 'complete' && (
+                        <button onClick={() => setStep(record, 'metadata', 'complete', 'Release metadata confirmed by user.')} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider">Confirm Metadata</button>
+                      )}
+                      <button onClick={() => reviewRights(record)} className="px-4 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-[10px] font-black uppercase tracking-wider">Review Rights + Splits</button>
                       {record.rails.distribution.state !== 'submitted' && record.rails.distribution.state !== 'complete' && (
                         <button onClick={() => setStep(record, 'distribution', 'submitted', 'Distributor submission confirmed by user.')} className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-black uppercase tracking-wider">Mark Distributor Submitted</button>
                       )}
