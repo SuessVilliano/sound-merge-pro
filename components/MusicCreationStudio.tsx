@@ -57,6 +57,12 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
   const [simplePrompt, setSimplePrompt] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [isInstrumental, setIsInstrumental] = useState(false);
+  const [isRecordingMemo, setIsRecordingMemo] = useState(false);
+  const [isAnalyzingMemo, setIsAnalyzingMemo] = useState(false);
+  const [voiceMemoBlob, setVoiceMemoBlob] = useState<Blob | null>(null);
+  const [voiceMemoUrl, setVoiceMemoUrl] = useState('');
+  const voiceMemoRecorderRef = useRef<MediaRecorder | null>(null);
+  const voiceMemoChunksRef = useRef<Blob[]>([]);
 
   // Cinema Forge (Kling AI) Expanded State
   const [klingMode, setKlingMode] = useState<KlingMode>('text_to_video');
@@ -131,6 +137,99 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
     setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
   };
 
+  const startVoiceMemo = async () => {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: { title: 'Microphone Not Available', message: 'This browser does not expose MediaRecorder audio capture.', type: 'info' }
+          }));
+          return;
+      }
+
+      try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const recorder = new MediaRecorder(stream);
+          voiceMemoChunksRef.current = [];
+          voiceMemoRecorderRef.current = recorder;
+
+          recorder.ondataavailable = event => {
+              if (event.data.size > 0) voiceMemoChunksRef.current.push(event.data);
+          };
+
+          recorder.onstop = () => {
+              const mimeType = recorder.mimeType || 'audio/webm';
+              const blob = new Blob(voiceMemoChunksRef.current, { type: mimeType });
+              if (voiceMemoUrl) URL.revokeObjectURL(voiceMemoUrl);
+              const url = URL.createObjectURL(blob);
+              setVoiceMemoBlob(blob);
+              setVoiceMemoUrl(url);
+              setIsRecordingMemo(false);
+              recorder.stream.getTracks().forEach(track => track.stop());
+          };
+
+          recorder.start();
+          setIsRecordingMemo(true);
+          setOperationalMessage('Voice memo recording...');
+      } catch (e: any) {
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: { title: 'Microphone Access', message: e?.message || 'Microphone permission was not granted.', type: 'info' }
+          }));
+      }
+  };
+
+  const stopVoiceMemo = () => {
+      const recorder = voiceMemoRecorderRef.current;
+      if (recorder && recorder.state !== 'inactive') recorder.stop();
+  };
+
+  const analyzeVoiceMemo = async () => {
+      if (!voiceMemoBlob) return;
+      setIsAnalyzingMemo(true);
+      setOperationalMessage('Listening to your voice memo...');
+
+      try {
+          const audioBase64 = await new Promise<string>((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onload = () => resolve(String(reader.result || ''));
+              reader.onerror = () => reject(reader.error);
+              reader.readAsDataURL(voiceMemoBlob);
+          });
+
+          const analysis = await studioPromptService.analyzeAudio({
+              audioBase64,
+              mimeType: voiceMemoBlob.type || 'audio/webm',
+              context: (isCustomMode ? styleInput : simplePrompt).trim()
+          });
+
+          if (analysis.promptSeed) {
+              setSimplePrompt(prev => [prev, analysis.promptSeed].filter(Boolean).join('\n'));
+              setStyleInput(prev => [prev, analysis.promptSeed, analysis.musicDirection].filter(Boolean).join(', '));
+          }
+
+          if (!isInstrumental) {
+              const lyricText = analysis.lyricDraft || analysis.transcript;
+              if (lyricText) setLyrics(prev => [prev, lyricText].filter(Boolean).join('\n\n'));
+          }
+
+          setIsCustomMode(true);
+          setOperationalMessage('Voice memo converted into song-building notes.');
+
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: {
+                  title: 'Voice Idea Captured',
+                  message: analysis.notes?.[0] || 'Your memo is now part of the lyric and production brief.',
+                  type: 'success'
+              }
+          }));
+      } catch (e: any) {
+          setOperationalMessage('Voice memo analysis needs attention.');
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: { title: 'Voice Memo Analysis', message: e?.message || 'Could not analyze this memo.', type: 'info' }
+          }));
+      } finally {
+          setIsAnalyzingMemo(false);
+      }
+  };
+
   const handleBuildPromptPack = async () => {
       const brief = (isCustomMode ? styleInput : simplePrompt).trim();
       if (!brief && !lyrics.trim()) {
@@ -181,7 +280,7 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
       
       togglePlayPause(false); 
       setIsProcessing(true);
-      setOperationalMessage(`Connecting to Institutional Hardware...`);
+      setOperationalMessage(`Connecting to selected music provider...`);
 
       const options: ForgeOptions = {
           engine: activeEngine,
@@ -196,7 +295,7 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
 
       try {
           const result = await musicGenService.generate(options);
-          setOperationalMessage("Metadata optimization in progress...");
+          setOperationalMessage("Saving finished generation to your catalog...");
           
           const trackData: any = {
               ...result,
@@ -213,7 +312,7 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
           setSongTitle('');
           
           window.dispatchEvent(new CustomEvent('sf-notification', { 
-              detail: { title: 'Forge Complete', message: 'Asset secured on ledger.', type: 'success', image: result.imageUrl } 
+              detail: { title: 'Forge Complete', message: 'Track saved to My Music.', type: 'success', image: result.imageUrl } 
           }));
 
       } catch (e: any) {
@@ -358,6 +457,52 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
                         <div className="space-y-2">
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Project Title</label>
                             <input value={songTitle} onChange={(e) => setSongTitle(e.target.value)} placeholder="Untitled..." className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-sm text-white outline-none focus:border-indigo-500 font-bold" />
+                        </div>
+
+                        <div className="rounded-2xl border border-slate-800 bg-slate-950 p-4">
+                            <div className="flex items-start justify-between gap-4">
+                                <div>
+                                    <div className="text-[10px] font-black text-cyan-400 uppercase tracking-widest flex items-center gap-2">
+                                        <Mic className="w-3.5 h-3.5" /> Voice / Hum Idea
+                                    </div>
+                                    <p className="text-[10px] text-slate-600 mt-1">Speak lyrics, sing a melody idea, hum a rhythm, or explain the song out loud.</p>
+                                </div>
+                                {!isRecordingMemo ? (
+                                    <button onClick={startVoiceMemo} className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-300 text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                                        <Circle className="w-3 h-3 fill-current" /> Record
+                                    </button>
+                                ) : (
+                                    <button onClick={stopVoiceMemo} className="px-3 py-2 rounded-xl bg-red-500 text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2 animate-pulse">
+                                        <Square className="w-3 h-3 fill-current" /> Stop
+                                    </button>
+                                )}
+                            </div>
+
+                            {voiceMemoUrl && (
+                                <div className="mt-4 space-y-3">
+                                    <audio src={voiceMemoUrl} controls className="w-full h-9" />
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            onClick={analyzeVoiceMemo}
+                                            disabled={isAnalyzingMemo}
+                                            className="px-3 py-2 rounded-xl bg-cyan-500 text-slate-950 text-[9px] font-black uppercase tracking-widest flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            {isAnalyzingMemo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Brain className="w-3.5 h-3.5" />}
+                                            Analyze + Use in Song
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                if (voiceMemoUrl) URL.revokeObjectURL(voiceMemoUrl);
+                                                setVoiceMemoBlob(null);
+                                                setVoiceMemoUrl('');
+                                            }}
+                                            className="px-3 py-2 rounded-xl border border-slate-700 bg-slate-900 text-slate-400 text-[9px] font-black uppercase tracking-widest"
+                                        >
+                                            Clear
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         {isCustomMode ? (
                             <div className="space-y-6">
