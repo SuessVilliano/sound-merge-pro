@@ -1,5 +1,4 @@
 
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import { KitsVoiceModel, StemResult } from '../types';
 
 export interface GeneratedTrack {
@@ -14,18 +13,9 @@ export interface GeneratedTrack {
   stems?: StemResult;
 }
 
-const ELEVENLABS_API_URL = "https://api.elevenlabs.io/v1";
-
-// KITS.AI CONFIGURATION
-const KITS_API_KEY = process.env.KITS_API_KEY || "kits_m7g3j5k9_l8r2w1p0"; 
+// KITS.AI client calls are legacy. Credentials are intentionally never shipped to the browser.
+const KITS_API_KEY = '';
 const KITS_BASE_URL = "https://arpeggi.io/api/kits/v1";
-
-// GEMINI CLIENT
-const getAiClient = () => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) return null;
-  return new GoogleGenerativeAI(apiKey);
-};
 
 // --- JOB QUEUE UTILITY ---
 const processJob = async <T>(
