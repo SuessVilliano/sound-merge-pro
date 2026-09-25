@@ -291,8 +291,15 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
           const result = await separateAudioWithKits(sepFile, (msg) => setSepStatus(msg));
           setExtractedStems(result);
           window.dispatchEvent(new CustomEvent('sf-notification', { detail: { title: 'Stems Isolated', message: `Extracted ${sepFile.name} components.`, type: 'success' } }));
-      } catch (e) {
+      } catch (e: any) {
           console.error("Stem Isolation Error:", e);
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: {
+                  title: 'Stem Provider Not Connected',
+                  message: e?.message || 'Stem separation is unavailable.',
+                  type: 'info'
+              }
+          }));
       } finally {
           setIsProcessing(false);
           setSepStatus('');
