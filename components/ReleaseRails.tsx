@@ -6,6 +6,7 @@ import {
 import { authService } from '../services/authService';
 import { dataService } from '../services/dataService';
 import { releaseRailsService } from '../services/releaseRailsService';
+import { releaseAutomationService, ReleaseAutomationProvider } from '../services/releaseAutomationService';
 import { ReleaseRailRecord, ReleaseRailState } from '../types';
 
 const STEP_META: Array<{ key: keyof ReleaseRailRecord['rails']; label: string }> = [
@@ -153,6 +154,19 @@ export const ReleaseRails: React.FC = () => {
     await setStep(record, key, 'complete', `${label} registration confirmed by user.`, confirmationId);
   };
 
+  const exportPacket = (record: ReleaseRailRecord, provider: ReleaseAutomationProvider) => {
+    const packet = releaseAutomationService.download(record, provider);
+    window.dispatchEvent(new CustomEvent('sf-notification', {
+      detail: {
+        title: packet.ready ? 'Agent Packet Ready' : 'Packet Exported With Blockers',
+        message: packet.ready
+          ? `${provider.toUpperCase()} submission packet exported from the canonical release record.`
+          : packet.blockers.join(' '),
+        type: packet.ready ? 'success' : 'info'
+      }
+    }));
+  };
+
   const markLive = async (record: ReleaseRailRecord) => {
     const spotify = window.prompt('Spotify URL (optional):', record.links.spotify || '') || record.links.spotify;
     const appleMusic = window.prompt('Apple Music URL (optional):', record.links.appleMusic || '') || record.links.appleMusic;
@@ -287,6 +301,16 @@ export const ReleaseRails: React.FC = () => {
                       <button onClick={() => markRegistration(record, 'mlc', 'MLC')} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider">Confirm MLC</button>
                       <button onClick={() => markRegistration(record, 'masterRights', 'Master-rights')} className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-white text-[10px] font-black uppercase tracking-wider">Confirm Master Rights</button>
                       <button onClick={() => markLive(record)} className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-[10px] font-black uppercase tracking-wider">Mark Live + Add Links</button>
+                    </div>
+
+                    <div className="pt-5 border-t border-slate-800">
+                      <div className="text-[9px] font-black uppercase tracking-[0.22em] text-slate-500 mb-3">Agent / Export Packets</div>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={() => exportPacket(record, 'distrokid')} className="px-4 py-2 rounded-xl border border-cyan-500/30 bg-cyan-500/10 text-cyan-300 text-[10px] font-black uppercase tracking-wider">DistroKid Packet</button>
+                        <button onClick={() => exportPacket(record, 'pro')} className="px-4 py-2 rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] font-black uppercase tracking-wider">PRO Packet</button>
+                        <button onClick={() => exportPacket(record, 'mlc')} className="px-4 py-2 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-300 text-[10px] font-black uppercase tracking-wider">MLC Packet</button>
+                        <button onClick={() => exportPacket(record, 'master_rights')} className="px-4 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[10px] font-black uppercase tracking-wider">Master Rights Packet</button>
+                      </div>
                     </div>
 
                     {(record.links.spotify || record.links.appleMusic || record.links.youtubeMusic) && (
