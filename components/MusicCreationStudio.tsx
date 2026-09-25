@@ -15,6 +15,7 @@ import { separateAudioWithKits } from '../services/audioService';
 import { klingService, KlingMode, KlingConfig } from '../services/klingService';
 import { dataService } from '../services/dataService';
 import { getStudioAgentSuggestions } from '../services/geminiService';
+import { studioPromptService } from '../services/studioPromptService';
 import { User, StemResult, StudioSuggestion, StudioAgent, VideoGenerationJob, Track } from '../types';
 import { usePlayer } from '../contexts/PlayerContext';
 
@@ -25,12 +26,11 @@ interface MusicCreationStudioProps {
 
 type StudioTab = 'forge' | 'separator' | 'cinema' | 'history';
 
-const MODEL_VERSIONS = [
-    { label: 'High-Fidelity Neural Node', value: 'udio' },
-    { label: 'Cinematic Score Processor', value: 'mureka' },
-    { label: 'Rapid Prototype Engine', value: 'musicgpt' },
-    { label: 'Standard Vocal Synthesis', value: 'suno' },
-    { label: 'Experimental Hybrid Node', value: 'aimusic' }
+const MODEL_VERSIONS: { label: string; value: MusicEngine }[] = [
+    { label: 'Suno — Official API', value: 'suno' },
+    { label: 'Mureka — Official API', value: 'mureka' },
+    { label: 'Udio — Browser Agent', value: 'udio' },
+    { label: 'Studio — Local Preview', value: 'studio' }
 ];
 
 const INITIAL_AGENTS: StudioAgent[] = [
@@ -45,11 +45,12 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
   const [activeTab, setActiveTab] = useState<StudioTab>('forge');
   const [isCustomMode, setIsCustomMode] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isBuildingPrompt, setIsBuildingPrompt] = useState(false);
   const [forgeHistory, setForgeHistory] = useState<any[]>([]);
   const [operationalMessage, setOperationalMessage] = useState('Marie is initializing...');
 
   // Forge Configuration State
-  const [activeEngine, setActiveEngine] = useState<MusicEngine>('musicgpt');
+  const [activeEngine, setActiveEngine] = useState<MusicEngine>('suno');
   const [duration, setDuration] = useState(60);
   const [songTitle, setSongTitle] = useState('');
   const [styleInput, setStyleInput] = useState('');
@@ -130,6 +131,50 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
     setSuggestions(prev => prev.filter(s => s.id !== suggestion.id));
   };
 
+  const handleBuildPromptPack = async () => {
+      const brief = (isCustomMode ? styleInput : simplePrompt).trim();
+      if (!brief && !lyrics.trim()) {
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: { title: 'Prompt Architect', message: 'Start with an idea, style, or lyric fragment first.', type: 'info' }
+          }));
+          return;
+      }
+
+      setIsBuildingPrompt(true);
+      setOperationalMessage('Prompt Architect is arranging the concept...');
+      try {
+          const pack = await studioPromptService.build({
+              brief,
+              currentStyle: styleInput,
+              currentLyrics: lyrics,
+              instrumental: isInstrumental,
+              targetEngine: activeEngine
+          });
+
+          setSongTitle(prev => prev || pack.title || '');
+          setStyleInput(pack.stylePrompt || styleInput);
+          setSimplePrompt(pack.stylePrompt || brief);
+          if (!isInstrumental && pack.lyrics) setLyrics(pack.lyrics);
+          setIsCustomMode(true);
+          setOperationalMessage('Prompt pack ready.');
+
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: {
+                  title: 'Prompt Pack Ready',
+                  message: `${pack.title || 'Track'} • ${pack.bpm || ''} BPM • ready for ${activeEngine.toUpperCase()}.`,
+                  type: 'success'
+              }
+          }));
+      } catch (e: any) {
+          setOperationalMessage('Prompt Architect needs attention.');
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: { title: 'Prompt Architect', message: e?.message || 'Could not build prompt pack.', type: 'info' }
+          }));
+      } finally {
+          setIsBuildingPrompt(false);
+      }
+  };
+
   const handleForge = async () => {
       const promptToUse = isCustomMode ? styleInput : simplePrompt;
       if (!promptToUse) return;
@@ -145,7 +190,8 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
           isInstrumental: isInstrumental,
           version: activeEngine,
           durationDesired: duration,
-          styleTags: styleInput.split(',').map(t => t.trim())
+          styleTags: styleInput.split(',').map(t => t.trim()),
+          title: songTitle
       };
 
       try {
@@ -170,8 +216,11 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
               detail: { title: 'Forge Complete', message: 'Asset secured on ledger.', type: 'success', image: result.imageUrl } 
           }));
 
-      } catch (e) {
-          setOperationalMessage("Signal error. Re-authenticating...");
+      } catch (e: any) {
+          setOperationalMessage("Generation needs attention.");
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: { title: 'Generation Not Started', message: e?.message || 'Provider connection failed.', type: 'info' }
+          }));
       } finally {
           setIsProcessing(false);
       }
@@ -309,7 +358,7 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
                                     <span className="text-xs font-bold text-slate-400 uppercase">Instrumental Only</span>
                                     <div className={`w-8 h-4 rounded-full p-0.5 transition-all ${isInstrumental ? 'bg-cyan-500' : 'bg-slate-700'}`}><div className={`w-3 h-3 bg-white rounded-full transition-transform ${isInstrumental ? 'translate-x-4' : 'translate-x-0'}`}></div></div>
                                 </div>
-                                <textarea value={lyrics} onChange={(e) => setLyrics(e.target.value)} disabled={isInstrumental} placeholder="Enter your lyrics (or leave empty for AI lyrics)..." className={`w-full h-48 bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white resize-none outline-none focus:border-indigo-500 ${isInstrumental ? 'opacity-30' : ''}`} />
+                                <textarea value={lyrics} onChange={(e) => setLyrics(e.target.value)} disabled={isInstrumental} placeholder="Enter lyrics, paste notes, or use Build Prompt Pack to write/structure them..." className={`w-full h-48 bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white resize-none outline-none focus:border-indigo-500 ${isInstrumental ? 'opacity-30' : ''}`} />
                             </div>
                         ) : (
                             <textarea value={simplePrompt} onChange={(e) => setSimplePrompt(e.target.value)} placeholder="Describe the track you want to create in natural language..." className="w-full h-64 bg-slate-950 border border-slate-800 rounded-xl p-4 text-sm text-white resize-none outline-none focus:border-indigo-500" />
@@ -451,13 +500,22 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
 
             <div className="p-6 bg-slate-900 border-t border-slate-800">
                 {activeTab === 'forge' && (
-                    <button 
-                        onClick={handleForge}
-                        disabled={isProcessing || (isCustomMode ? !styleInput : !simplePrompt)}
-                        className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-xl hover:scale-[1.02] disabled:opacity-30 flex items-center justify-center gap-3"
-                    >
-                        {isProcessing ? <><Loader2 className="w-5 h-5 animate-spin" /> DISPATCHING...</> : <><Zap className="w-5 h-5" /> GENERATE MUSIC</>}
-                    </button>
+                    <div className="space-y-2">
+                        <button
+                            onClick={handleBuildPromptPack}
+                            disabled={isBuildingPrompt || isProcessing || (!(isCustomMode ? styleInput : simplePrompt) && !lyrics)}
+                            className="w-full py-3 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-300 font-black uppercase tracking-widest rounded-xl transition-all disabled:opacity-30 flex items-center justify-center gap-3 text-[10px]"
+                        >
+                            {isBuildingPrompt ? <><Loader2 className="w-4 h-4 animate-spin" /> BUILDING PROMPT...</> : <><Brain className="w-4 h-4" /> BUILD PROMPT + LYRICS</>}
+                        </button>
+                        <button 
+                            onClick={handleForge}
+                            disabled={isProcessing || isBuildingPrompt || (isCustomMode ? !styleInput : !simplePrompt)}
+                            className="w-full py-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-xl hover:scale-[1.02] disabled:opacity-30 flex items-center justify-center gap-3"
+                        >
+                            {isProcessing ? <><Loader2 className="w-5 h-5 animate-spin" /> DISPATCHING...</> : <><Zap className="w-5 h-5" /> GENERATE MUSIC</>}
+                        </button>
+                    </div>
                 )}
                 {activeTab === 'cinema' && (
                     <button 
