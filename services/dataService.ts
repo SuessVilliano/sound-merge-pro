@@ -125,42 +125,62 @@ export const dataService = {
 
   // --- RELEASE RAILS: canonical release/source-of-truth records ---
   async saveReleaseRail(record: ReleaseRailRecord): Promise<void> {
-      if (isFirestoreRestricted) {
-          const key = `sf_release_rails_${record.userId}`;
+      const key = `sf_release_rails_${record.userId}`;
+      const saveLocal = () => {
           const current = JSON.parse(localStorage.getItem(key) || '[]') as ReleaseRailRecord[];
           const next = [record, ...current.filter(r => r.id !== record.id)];
           localStorage.setItem(key, JSON.stringify(next));
-          return;
-      }
+      };
+
+      if (isFirestoreRestricted) { saveLocal(); return; }
+
       try {
           await setDoc(doc(db, 'release_rails', record.id), stripUndefined({ ...record, updatedAt: new Date().toISOString() }));
-      } catch (e: any) { handleFirestoreError(e); }
+      } catch (e: any) {
+          handleFirestoreError(e);
+          saveLocal();
+      }
   },
 
   async getReleaseRails(userId: string): Promise<ReleaseRailRecord[]> {
-      if (isFirestoreRestricted) {
-          try { return JSON.parse(localStorage.getItem(`sf_release_rails_${userId}`) || '[]'); }
+      const key = `sf_release_rails_${userId}`;
+      const readLocal = () => {
+          try { return JSON.parse(localStorage.getItem(key) || '[]') as ReleaseRailRecord[]; }
           catch { return []; }
-      }
+      };
+
+      if (isFirestoreRestricted) return readLocal();
+
       try {
-          const qry = query(collection(db, 'release_rails'), where('userId', '==', userId), orderBy('updatedAt', 'desc'));
+          const qry = query(collection(db, 'release_rails'), where('userId', '==', userId));
           const snap = await getDocs(qry);
-          return snap.docs.map(d => d.data() as ReleaseRailRecord);
-      } catch (e: any) { handleFirestoreError(e); return []; }
+          return snap.docs
+              .map(d => d.data() as ReleaseRailRecord)
+              .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+      } catch (e: any) {
+          handleFirestoreError(e);
+          return readLocal();
+      }
   },
 
   async updateReleaseRail(id: string, patch: Partial<ReleaseRailRecord>, userId?: string): Promise<void> {
       const updatedAt = new Date().toISOString();
-      if (isFirestoreRestricted) {
+      const updateLocal = () => {
           if (!userId) return;
           const key = `sf_release_rails_${userId}`;
           const current = JSON.parse(localStorage.getItem(key) || '[]') as ReleaseRailRecord[];
           const next = current.map(r => r.id === id ? { ...r, ...patch, updatedAt } : r);
           localStorage.setItem(key, JSON.stringify(next));
-          return;
+      };
+
+      if (isFirestoreRestricted) { updateLocal(); return; }
+
+      try {
+          await updateDoc(doc(db, 'release_rails', id), stripUndefined({ ...patch, updatedAt }));
+      } catch (e: any) {
+          handleFirestoreError(e);
+          updateLocal();
       }
-      try { await updateDoc(doc(db, 'release_rails', id), stripUndefined({ ...patch, updatedAt })); }
-      catch (e: any) { handleFirestoreError(e); }
   },
 
   subscribeToReleaseRails(userId: string, callback: (records: ReleaseRailRecord[]) => void): Unsubscribe {
@@ -168,13 +188,23 @@ export const dataService = {
           this.getReleaseRails(userId).then(callback);
           return () => {};
       }
+
       try {
-          const qry = query(collection(db, 'release_rails'), where('userId', '==', userId), orderBy('updatedAt', 'desc'));
-          return onSnapshot(qry, snap => callback(snap.docs.map(d => d.data() as ReleaseRailRecord)), err => {
+          const qry = query(collection(db, 'release_rails'), where('userId', '==', userId));
+          return onSnapshot(qry, snap => {
+              const records = snap.docs
+                  .map(d => d.data() as ReleaseRailRecord)
+                  .sort((a, b) => (b.updatedAt || '').localeCompare(a.updatedAt || ''));
+              callback(records);
+          }, err => {
               handleFirestoreError(err);
-              callback([]);
+              this.getReleaseRails(userId).then(callback);
           });
-      } catch (e: any) { handleFirestoreError(e); callback([]); return () => {}; }
+      } catch (e: any) {
+          handleFirestoreError(e);
+          this.getReleaseRails(userId).then(callback);
+          return () => {};
+      }
   },
 
   async getAllReleases(): Promise<DistributionRelease[]> { return []; },
