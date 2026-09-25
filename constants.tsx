@@ -25,6 +25,7 @@ export const VIEWS = {
   CRM: 'crm',
   VOICE: 'voice',
   DISTRIBUTION: 'distribution',
+  RELEASE_RAILS: 'release-rails',
   DAO: 'dao',
   MONITORING: 'monitoring',
   SETTINGS: 'settings',
@@ -58,6 +59,7 @@ export const NAVIGATION_ITEMS = [
 
   // UNLOCKS AT LEVEL 3 (XP > 1000)
   { id: VIEWS.DISTRIBUTION, label: 'Distribution', icon: 'Radio', milestone: 'reputation_1000' },
+  { id: VIEWS.RELEASE_RAILS, label: 'Release Rails', icon: 'Radio', milestone: 'first_asset' },
   { id: VIEWS.REVENUE, label: 'Revenue Recovery', icon: 'DollarSign', milestone: 'reputation_1000' },
   { id: VIEWS.TOURING, label: 'Gig Finder', icon: 'MapPin', milestone: 'reputation_1000' },
 
