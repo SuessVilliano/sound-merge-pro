@@ -1,6 +1,6 @@
 import { auth } from './firebase';
 
-export type IntegrationMode = 'api' | 'browser_agent' | 'adapter_needed' | 'not_configured' | 'server_proxy_needed' | 'retiring';
+export type IntegrationMode = 'api' | 'browser_agent' | 'adapter_needed' | 'not_configured' | 'server_proxy_needed' | 'retiring' | 'retiring';
 
 export interface IntegrationStatus {
   id: string;
