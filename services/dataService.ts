@@ -6,6 +6,8 @@ import { VoiceAsset, User, Stats, DistributionSubmission, SyncBrief, Opportunity
 
 let isFirestoreRestricted = localStorage.getItem('sf_firestore_restricted') === 'true';
 
+const stripUndefined = <T,>(value: T): T => JSON.parse(JSON.stringify(value));
+
 export const handleFirestoreError = (e: any) => {
     const msg = e?.message || "";
     const code = e?.code || "";
@@ -131,7 +133,7 @@ export const dataService = {
           return;
       }
       try {
-          await setDoc(doc(db, 'release_rails', record.id), { ...record, updatedAt: new Date().toISOString() });
+          await setDoc(doc(db, 'release_rails', record.id), stripUndefined({ ...record, updatedAt: new Date().toISOString() }));
       } catch (e: any) { handleFirestoreError(e); }
   },
 
@@ -157,7 +159,7 @@ export const dataService = {
           localStorage.setItem(key, JSON.stringify(next));
           return;
       }
-      try { await updateDoc(doc(db, 'release_rails', id), { ...patch, updatedAt }); }
+      try { await updateDoc(doc(db, 'release_rails', id), stripUndefined({ ...patch, updatedAt })); }
       catch (e: any) { handleFirestoreError(e); }
   },
 
