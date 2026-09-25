@@ -7,7 +7,7 @@ import { authService } from '../services/authService';
 import { dataService } from '../services/dataService';
 import { releaseRailsService } from '../services/releaseRailsService';
 import { releaseAutomationService, ReleaseAutomationProvider } from '../services/releaseAutomationService';
-import { ReleaseRailRecord, ReleaseRailState } from '../types';
+import { ReleaseAutomationJob, ReleaseRailRecord, ReleaseRailState } from '../types';
 
 const STEP_META: Array<{ key: keyof ReleaseRailRecord['rails']; label: string }> = [
   { key: 'created', label: 'Created' },
@@ -42,11 +42,17 @@ const StateIcon = ({ state }: { state: ReleaseRailState }) => {
 export const ReleaseRails: React.FC = () => {
   const user = authService.getCurrentUser();
   const [records, setRecords] = useState<ReleaseRailRecord[]>([]);
+  const [jobs, setJobs] = useState<ReleaseAutomationJob[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     return dataService.subscribeToReleaseRails(user.uid, setRecords);
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!user) return;
+    return dataService.subscribeToReleaseAutomationJobs(user.uid, setJobs);
   }, [user?.uid]);
 
   const totals = useMemo(() => {
@@ -163,6 +169,32 @@ export const ReleaseRails: React.FC = () => {
           ? `${provider.toUpperCase()} submission packet exported from the canonical release record.`
           : packet.blockers.join(' '),
         type: packet.ready ? 'success' : 'info'
+      }
+    }));
+  };
+
+  const queueAgent = async (record: ReleaseRailRecord, provider: ReleaseAutomationProvider) => {
+    const packet = releaseAutomationService.build(record, provider);
+    if (!packet.ready) {
+      window.dispatchEvent(new CustomEvent('sf-notification', {
+        detail: {
+          title: 'Agent Job Blocked',
+          message: packet.blockers.join(' '),
+          type: 'info'
+        }
+      }));
+      return;
+    }
+
+    const job = releaseAutomationService.createJob(record, provider);
+    await dataService.saveReleaseAutomationJob(job);
+    setJobs(prev => [job, ...prev.filter(j => j.id !== job.id)]);
+
+    window.dispatchEvent(new CustomEvent('sf-notification', {
+      detail: {
+        title: 'Agent Job Queued',
+        message: `${provider.toUpperCase()} job is ready for the connected browser agent. Final irreversible submission remains approval-gated.`,
+        type: 'success'
       }
     }));
   };
@@ -310,6 +342,12 @@ export const ReleaseRails: React.FC = () => {
                         <button onClick={() => exportPacket(record, 'pro')} className="px-4 py-2 rounded-xl border border-violet-500/30 bg-violet-500/10 text-violet-300 text-[10px] font-black uppercase tracking-wider">PRO Packet</button>
                         <button onClick={() => exportPacket(record, 'mlc')} className="px-4 py-2 rounded-xl border border-blue-500/30 bg-blue-500/10 text-blue-300 text-[10px] font-black uppercase tracking-wider">MLC Packet</button>
                         <button onClick={() => exportPacket(record, 'master_rights')} className="px-4 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[10px] font-black uppercase tracking-wider">Master Rights Packet</button>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mt-3">
+                        <button onClick={() => queueAgent(record, 'distrokid')} className="px-4 py-2 rounded-xl bg-cyan-600 hover:bg-cyan-500 text-white text-[10px] font-black uppercase tracking-wider">Queue DistroKid Agent</button>
+                        <button onClick={() => queueAgent(record, 'pro')} className="px-4 py-2 rounded-xl bg-violet-600 hover:bg-violet-500 text-white text-[10px] font-black uppercase tracking-wider">Queue PRO Agent</button>
+                        <button onClick={() => queueAgent(record, 'mlc')} className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-[10px] font-black uppercase tracking-wider">Queue MLC Agent</button>
+                        <button onClick={() => queueAgent(record, 'master_rights')} className="px-4 py-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-[10px] font-black uppercase tracking-wider">Queue Master Rights Agent</button>
                       </div>
                     </div>
 
