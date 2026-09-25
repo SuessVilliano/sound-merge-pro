@@ -98,7 +98,7 @@ export const Advances: React.FC<AdvancesProps> = ({ user }) => {
                 </p>
                 <div className="bg-green-500/10 border border-green-500/20 px-3 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
                     <Activity className="w-3 h-3 text-green-500 animate-pulse" />
-                    <span className="text-[9px] font-black text-green-400 uppercase tracking-widest">Real-time Stream Sync Active</span>
+                    <span className="text-[9px] font-black text-green-400 uppercase tracking-widest">Manual Estimate Mode</span>
                 </div>
               </div>
           </div>
@@ -112,7 +112,7 @@ export const Advances: React.FC<AdvancesProps> = ({ user }) => {
                           <Info className="w-5 h-5 text-cyan-400" /> How it Works
                       </h3>
                       <p className="text-slate-400 text-sm leading-relaxed font-medium">
-                          Sound Merge leverages real-time Spotify Playback and Songstats signals to calculate non-recourse advances. We bridge the gap between your streaming revenue and immediate capital needs.
+                          This workspace calculates a non-binding estimate from the royalty and ownership figures you enter. Provider-backed underwriting and funding-partner integrations are not connected yet.
                       </p>
                   </div>
                   <div className="bg-white dark:bg-slate-850 border border-slate-200 dark:border-slate-800 rounded-xl p-6">
@@ -121,13 +121,13 @@ export const Advances: React.FC<AdvancesProps> = ({ user }) => {
                       </h3>
                       <ul className="space-y-3">
                           <li className="flex items-center gap-3 text-sm text-slate-300 font-medium">
-                              <CheckCircle2 className="w-4 h-4 text-green-500" /> Verified stream history via RapidAPI Nodes
+                              <CheckCircle2 className="w-4 h-4 text-green-500" /> Royalty history supplied for later verification
                           </li>
                           <li className="flex items-center gap-3 text-sm text-slate-300 font-medium">
                               <CheckCircle2 className="w-4 h-4 text-green-500" /> $100+ net royalties in last 6 months
                           </li>
                           <li className="flex items-center gap-3 text-sm text-slate-300 font-medium">
-                              <CheckCircle2 className="w-4 h-4 text-green-500" /> On-chain identity verification
+                              <CheckCircle2 className="w-4 h-4 text-green-500" /> Documented rights ownership for later verification
                           </li>
                       </ul>
                   </div>
@@ -135,13 +135,13 @@ export const Advances: React.FC<AdvancesProps> = ({ user }) => {
               <div className="bg-indigo-600 rounded-2xl p-8 text-white flex flex-col justify-between shadow-2xl shadow-indigo-600/20">
                   <div>
                     <h2 className="text-2xl font-bold mb-4 uppercase tracking-tight italic">Liquidate Future Yield</h2>
-                    <p className="text-indigo-100 mb-8 font-medium">Get an instant indicative estimate based on your global streaming footprint.</p>
+                    <p className="text-indigo-100 mb-8 font-medium">Model a non-binding range from the figures you enter.</p>
                   </div>
                   <button 
                     onClick={() => setStep('calculator')}
                     className="w-full bg-white text-indigo-950 py-4 rounded-xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-slate-100 transition-all shadow-xl"
                   >
-                      Initialize Signal Search <ArrowRight className="w-5 h-5" />
+                      Open Manual Estimate <ArrowRight className="w-5 h-5" />
                   </button>
               </div>
           </div>
@@ -157,7 +157,7 @@ export const Advances: React.FC<AdvancesProps> = ({ user }) => {
                       </div>
                       <div className="flex items-center gap-1 bg-cyan-500/10 px-2 py-1 rounded border border-cyan-500/20">
                           <Signal className="w-3 h-3 text-cyan-400" />
-                          <span className="text-[8px] font-black text-cyan-500 uppercase">Live Node</span>
+                          <span className="text-[8px] font-black text-cyan-500 uppercase">Manual Input</span>
                       </div>
                   </div>
 
