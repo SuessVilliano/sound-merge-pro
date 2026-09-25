@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { Opportunity } from '../types';
 import { CheckCircle2, AlertTriangle, ArrowRight, Wand2, Loader2, Globe, Send, Zap, ShieldCheck } from 'lucide-react';
 import { generatePitchEmail } from '../services/geminiService';
-import { songtradrService } from '../services/songtradrService';
+import { dataService } from '../services/dataService';
+import { authService } from '../services/authService';
 
 interface OpportunityCardProps {
   opportunity: Opportunity;
@@ -31,39 +32,50 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
 
   const handleSubmit = async () => {
       if (opportunity.source_platform === 'songtradr') {
-          try {
-              setSubmissionStatus('connecting');
-              setStatusText('Authenticating Node...');
-              await songtradrService.connect();
-              
-              setSubmissionStatus('optimizing');
-              setStatusText('Optimizing Rights Data...');
-              await new Promise(r => setTimeout(r, 1500));
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: {
+                  title: 'Songtradr Marketplace Transition',
+                  message: 'Songtradr Marketplace closes September 30, 2026. Sound Merge will not claim a direct submission to the retiring marketplace.',
+                  type: 'info'
+              }
+          }));
+          return;
+      }
 
-              setSubmissionStatus('submitting');
-              setStatusText('Injecting Asset into Songtradr...');
-              // Mock selecting the current project track
-              const bestTrack = { id: 'isrc_123', title: 'Midnight City', artist: 'Neon Dreams' };
-              await songtradrService.submitToBrief(opportunity.id, bestTrack);
-              
-              setSubmissionStatus('success');
-              setStatusText('Submission Secured');
-              
-              window.dispatchEvent(new CustomEvent('sf-notification', { 
-                  detail: { title: 'Direct Submit Success', message: `"${bestTrack.title}" is now under review by Songtradr.`, type: 'success' } 
-              }));
+      const user = authService.getCurrentUser();
+      if (!user) {
+          alert('Sign in before queuing an opportunity request.');
+          return;
+      }
 
-          } catch (e) {
-              console.error(e);
-              setSubmissionStatus('idle'); 
-              alert("Node synchronization failed. Please re-authenticate your Songtradr credentials.");
-          }
-      } else {
+      try {
           setSubmissionStatus('submitting');
-          setStatusText('Processing...');
-          await new Promise(r => setTimeout(r, 1500));
+          setStatusText('Queuing in Sound Merge...');
+          await dataService.submitOpportunityRequest({
+              id: `opp_req_${crypto.randomUUID()}`,
+              userId: user.uid,
+              userEmail: user.email,
+              userName: user.displayName,
+              briefId: opportunity.id,
+              briefTitle: opportunity.brief_title,
+              type: 'I have a track to pitch',
+              notes: pitch || 'Queued from Opportunity Card. External submission has not occurred.',
+              status: 'pending',
+              createdAt: new Date().toISOString()
+          });
           setSubmissionStatus('success');
-          setStatusText('Request Forwarded');
+          setStatusText('Queued for Review');
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: {
+                  title: 'Opportunity Queued',
+                  message: 'Saved inside Sound Merge. No external submission is being claimed.',
+                  type: 'success'
+              }
+          }));
+      } catch (e) {
+          console.error(e);
+          setSubmissionStatus('idle');
+          alert('Could not queue the opportunity request.');
       }
   };
 
@@ -96,7 +108,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
               : 'bg-slate-100 dark:bg-slate-800 text-slate-500 border-slate-200 dark:border-slate-700'
             }`}>
               {isSongtradr ? <Globe className="w-3 h-3" /> : <Zap className="w-3 h-3" />}
-              {isSongtradr ? 'Songtradr Direct' : opportunity.source_platform.replace('_', ' ')}
+              {isSongtradr ? 'Songtradr — Closing' : opportunity.source_platform.replace('_', ' ')}
             </span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{opportunity.usage_type}</span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">• {new Date(opportunity.deadline_datetime).toLocaleDateString()}</span>
@@ -150,7 +162,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                         : 'bg-slate-800 text-slate-400 cursor-wait border border-slate-700'
                     }`}
                 >
-                    {submissionStatus === 'idle' && <><Globe className="w-4 h-4" /> Songtradr Direct Submit</>}
+                    {submissionStatus === 'idle' && <><Globe className="w-4 h-4" /> Marketplace Transition</>}
                     {submissionStatus !== 'idle' && <><Loader2 className="w-4 h-4 animate-spin" /> {statusText}</>}
                 </button>
             ) : (
@@ -167,7 +179,7 @@ export const OpportunityCard: React.FC<OpportunityCardProps> = ({ opportunity })
                         onClick={handleSubmit}
                         className="flex-1 md:flex-none px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all shadow-xl shadow-indigo-600/20 flex items-center justify-center gap-2"
                     >
-                        <ShieldCheck className="w-4 h-4" /> Execute Request
+                        <ShieldCheck className="w-4 h-4" /> Queue Request
                     </button>
                 </>
             )}
