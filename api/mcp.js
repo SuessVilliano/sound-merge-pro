@@ -4,6 +4,7 @@ const PROTOCOL_VERSION = "2026-07-28";
 const providers = [
   { id:"higgsfield", label:"Higgsfield", capabilities:["video","image","character","lip_sync","motion"], modes:["api","mcp","web"], preferred:"mcp_for_agents_api_for_in_app" },
   { id:"suno", label:"Suno", capabilities:["music_generation","lyrics","covers","stems"], modes:["api"], preferred:"api" },
+  { id:"elevenlabs", label:"ElevenLabs", capabilities:["music_generation","audio_reference","composition_plans","inpainting","video_to_music","narration","audiobooks","voice"], modes:["api"], preferred:"api_with_byok" },
   { id:"mureka", label:"Mureka", capabilities:["music_generation"], modes:["api"], preferred:"api" },
   { id:"music_ai", label:"Music.AI", capabilities:["stems","transcription","voice_detection","metadata","audio_workflows"], modes:["api"], preferred:"api" },
   { id:"landr", label:"LANDR", capabilities:["mastering"], modes:["api"], preferred:"api" },
@@ -198,7 +199,7 @@ function routeCapability(capability){
   const matched=Object.entries(aliases).find(([,terms])=>terms.some(t=>q.includes(t)))?.[0] || q;
   const capabilityMap={
     video:["higgsfield"],
-    music_generation:["suno","mureka"],
+    music_generation:["suno","elevenlabs","mureka"],
     mastering:["landr","music_ai"],
     analytics:["chartmetric","songstats","spotify","youtube","apple_music"],
     distribution:["labelgrid","distrokid","soundcloud"],
