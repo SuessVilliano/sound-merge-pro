@@ -1,4 +1,4 @@
-export type ByokProvider = 'gemini' | 'mureka' | 'suno' | 'higgsfield';
+export type ByokProvider = 'gemini' | 'mureka' | 'suno' | 'elevenlabs' | 'higgsfield';
 
 export type ByokCredentials = {
   apiKey?: string;
