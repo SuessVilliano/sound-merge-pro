@@ -5,6 +5,7 @@ import { Track, User } from '../types';
 import { dataService } from '../services/dataService';
 import { usePlayer } from '../contexts/PlayerContext';
 import { CatalogImportModal } from './CatalogImportModal';
+import { CatalogDiscovery } from './CatalogDiscovery';
 
 interface MyMusicProps {
   user: User;
@@ -18,6 +19,7 @@ export const MyMusic: React.FC<MyMusicProps> = ({ user, setShowUploadModal }) =>
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [showCatalogImport, setShowCatalogImport] = useState(false);
+  const [showCatalogDiscovery, setShowCatalogDiscovery] = useState(false);
   const { playTrack } = usePlayer();
 
   // Favorites State with persistence
@@ -111,6 +113,12 @@ export const MyMusic: React.FC<MyMusicProps> = ({ user, setShowUploadModal }) =>
             </div>
             <div className="flex flex-wrap gap-2">
                 <button
+                    onClick={() => setShowCatalogDiscovery(v => !v)}
+                    className="border border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-300 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+                >
+                    <Search className="w-4 h-4" /> Find Older Catalog
+                </button>
+                <button
                     onClick={() => setShowCatalogImport(true)}
                     className="bg-slate-900 dark:bg-white text-white dark:text-slate-950 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
                 >
@@ -130,6 +138,8 @@ export const MyMusic: React.FC<MyMusicProps> = ({ user, setShowUploadModal }) =>
                 </button>
             </div>
         </div>
+
+        {showCatalogDiscovery && <CatalogDiscovery user={user} onClose={() => setShowCatalogDiscovery(false)} />}
 
         {/* Filters Panel */}
         {showFilters && (
