@@ -9,9 +9,9 @@ import {
 } from 'lucide-react';
 import { crmService } from '../services/crmService';
 import { authService } from '../services/authService';
+import { dataService } from '../services/dataService';
 import { searchAddresses, chatWithGemini } from '../services/geminiService';
-import { CRMContact, CRMAutomaton, CRMCampaign, MessageThread, ChatMessage, User, CommunicationChannel } from '../types';
-import { MOCK_STATS } from '../constants';
+import { CRMContact, CRMAutomaton, CRMCampaign, MessageThread, ChatMessage, User, CommunicationChannel, Stats } from '../types';
 
 export const MarketingCRM: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'inbox' | 'calendar' | 'automations' | 'contacts'>('inbox');
@@ -19,6 +19,18 @@ export const MarketingCRM: React.FC = () => {
   const [isCoreActive, setIsCoreActive] = useState(!!user?.ghlIntegration?.ghlLocationId);
   const [loading, setLoading] = useState(false);
   const [showProvisioning, setShowProvisioning] = useState(false);
+  const [realStats, setRealStats] = useState<Stats>({
+      totalEarnings: 0,
+      totalStreams: 0,
+      activeOpportunities: 0,
+      brandScore: '-',
+      earningsGrowth: 0,
+      streamsGrowth: 0,
+      opportunitiesNew: false,
+      artistLevel: user?.artistLevel || 'New Artist',
+      xp: user?.xp || 0,
+      nextLevelXp: Math.max((user?.xp || 0) + 1000, 1000)
+  });
 
   // Data State
   const [threads, setThreads] = useState<MessageThread[]>([]);
@@ -29,6 +41,11 @@ export const MarketingCRM: React.FC = () => {
           loadData();
       }
   }, [activeTab, isCoreActive]);
+
+  useEffect(() => {
+      if (!user?.uid) return;
+      dataService.getRealStats(user.uid).then(setRealStats).catch(() => {});
+  }, [user?.uid]);
 
   const loadData = async () => {
       setLoading(true);
@@ -53,9 +70,9 @@ export const MarketingCRM: React.FC = () => {
               </h2>
               <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl">
                   {[
-                      { id: 'inbox', label: 'Matrix Inbox', icon: Inbox },
+                      { id: 'inbox', label: 'Inbox', icon: Inbox },
                       { id: 'calendar', label: 'Planner', icon: Calendar },
-                      { id: 'contacts', label: 'Registry', icon: Users },
+                      { id: 'contacts', label: 'Contacts', icon: Users },
                       { id: 'automations', label: 'Workflows', icon: Zap },
                   ].map(tab => (
                       <button 
@@ -72,7 +89,7 @@ export const MarketingCRM: React.FC = () => {
           <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 px-4 py-1.5 bg-green-500/10 rounded-full border border-green-500/20">
                   <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
-                  <span className="text-[10px] font-black text-green-600 dark:text-green-400 uppercase tracking-widest">Core Synchronized</span>
+                  <span className="text-[10px] font-black text-green-600 dark:text-green-400 uppercase tracking-widest">CRM Connected</span>
               </div>
               {!isCoreActive && (
                   <button onClick={() => setShowProvisioning(true)} className="bg-cyan-600 text-white px-5 py-2 rounded-xl text-[10px] font-black uppercase">Init Hub</button>
@@ -84,7 +101,7 @@ export const MarketingCRM: React.FC = () => {
           {loading ? (
               <div className="absolute inset-0 bg-white/50 dark:bg-slate-950/50 backdrop-blur-sm z-50 flex flex-col items-center justify-center gap-4">
                   <Loader2 className="w-10 h-10 animate-spin text-cyan-500" />
-                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Synchronizing Matrix...</span>
+                  <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em]">Loading CRM data...</span>
               </div>
           ) : null}
 
@@ -140,7 +157,7 @@ const InboxMatrix: React.FC<{ threads: MessageThread[], user: User | null }> = (
         const prompt = `The fan just said: "${lastMsg}". Give me a plain text, conversational reply suggestion from the artist. MAX 2 sentences. No markdown.`;
         const suggestion = await chatWithGemini(prompt, [], {
             currentView: 'inbox',
-            stats: MOCK_STATS,
+            stats: realStats,
             opportunities: [],
             user: user,
             agentRole: 'manager'
