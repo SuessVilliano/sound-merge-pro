@@ -1,4 +1,5 @@
 import { requireUser } from "../_lib/auth.js";
+import { getByokKey, getSunoByokUrls } from "../_lib/byok.js";
 
 const normalizeMureka = (data, taskType) => {
   const choice = Array.isArray(data?.choices) ? data.choices[0] : null;
@@ -26,8 +27,9 @@ export default async function handler(req, res) {
   if (!provider || !id) return res.status(400).json({ error: "provider and id are required" });
 
   if (provider === "mureka") {
-    const apiKey = process.env.MUREKA_API_KEY;
-    if (!apiKey) return res.status(503).json({ error: "Mureka is not configured" });
+    const byokKey = getByokKey(req);
+    const apiKey = byokKey || process.env.MUREKA_API_KEY;
+    if (!apiKey) return res.status(503).json({ error: "Mureka is not configured. Add your Mureka key in Integration Center." });
 
     const url = taskType === "instrumental"
       ? `https://api.mureka.ai/v1/instrumental/query/${encodeURIComponent(id)}`
@@ -51,11 +53,13 @@ export default async function handler(req, res) {
   }
 
   if (provider === "suno") {
-    const apiKey = process.env.SUNO_API_KEY;
-    const statusTemplate = process.env.SUNO_STATUS_URL;
+    const byokKey = getByokKey(req);
+    const byokUrls = getSunoByokUrls(req);
+    const apiKey = byokKey || process.env.SUNO_API_KEY;
+    const statusTemplate = byokUrls.statusUrl || process.env.SUNO_STATUS_URL;
 
     if (!apiKey || !statusTemplate) {
-      return res.status(503).json({ error: "Suno status adapter is not configured" });
+      return res.status(503).json({ error: "Suno status is not configured. Add your Suno API key and status endpoint in Integration Center." });
     }
 
     const url = statusTemplate.includes("{id}")
