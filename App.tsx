@@ -86,9 +86,9 @@ const AppContent = () => {
   });
   
   const [chatThreads, setChatThreads] = useState<Record<string, StaffMessage[]>>({
-    'team-hub': [{ id: '0', agentId: 'team-hub', role: 'agent', text: "Team Hub initialized. We're all in the loop. What's the master game plan for today?", timestamp: '10:00 AM' }],
-    mgr: [{ id: '1', agentId: 'mgr', role: 'agent', text: "James here. I've analyzed your current growth. We're leaning too heavily on organic search. I'm drafting a proposal to shift your target to Sync Licensing for H2.", timestamp: '10:00 AM' }],
-    mkt: [{ id: '2', agentId: 'mkt', role: 'agent', text: "Elena from Marketing. Your latest track has a 4-second hook that is perfect for a transition trend.", timestamp: '9:45 AM' }],
+    'team-hub': [{ id: '0', agentId: 'team-hub', role: 'agent', text: "Team Hub is ready. Ask for a plan, release review, marketing brief, catalog check, or next-action list.", timestamp: 'Ready' }],
+    mgr: [{ id: '1', agentId: 'mgr', role: 'agent', text: "Manager workspace ready. I’ll ground recommendations in the data and releases currently connected to Sound Merge.", timestamp: 'Ready' }],
+    mkt: [{ id: '2', agentId: 'mkt', role: 'agent', text: "Marketing workspace ready. Connect a release, campaign, or audience source and I can help build the rollout.", timestamp: 'Ready' }],
   });
 
   const [selectedArtistId, setSelectedArtistId] = useState<number | undefined>(undefined);
@@ -183,6 +183,15 @@ const AppContent = () => {
       setCurrentView(view);
       setIsMobileMenuOpen(false);
   };
+
+  useEffect(() => {
+      const handleExternalNavigate = (event: Event) => {
+          const custom = event as CustomEvent<{ view?: string }>;
+          if (custom.detail?.view) handleNavigate(custom.detail.view);
+      };
+      window.addEventListener('sf-navigate', handleExternalNavigate);
+      return () => window.removeEventListener('sf-navigate', handleExternalNavigate);
+  }, []);
 
   const handleCompleteTour = async () => {
       setShowGuidedTour(false);
