@@ -1,4 +1,5 @@
 import { requireUser } from "../_lib/auth.js";
+import { getByokKey } from "../_lib/byok.js";
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
@@ -13,8 +14,9 @@ export default async function handler(req, res) {
   const user = await requireUser(req, res);
   if (!user) return;
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: "Gemini is not configured" });
+  const byokKey = getByokKey(req);
+  const apiKey = byokKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: "Gemini is not configured. Add a personal Gemini key in Integration Center or connect the Sound Merge key." });
 
   const {
     brief = "",
@@ -96,7 +98,7 @@ If instrumental is yes, lyrics MUST be an empty string.
       return res.status(502).json({ error: "Prompt architect returned an invalid payload" });
     }
 
-    return res.status(200).json({ model: MODEL, pack });
+    return res.status(200).json({ model: MODEL, credentialSource: byokKey ? "artist_byok" : "sound_merge", pack });
   } catch (error) {
     console.error("[PromptPack] Error", error);
     return res.status(500).json({ error: "Prompt architect unavailable" });
