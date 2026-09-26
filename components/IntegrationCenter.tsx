@@ -48,6 +48,12 @@ const byokProviders: Array<{
     ]
   },
   {
+    id: 'elevenlabs',
+    label: 'ElevenLabs',
+    description: 'Eleven Music v2.5 generation plus future audiobook, narration, dubbing and voice workflows through the same account.',
+    fields: [{ key: 'apiKey', label: 'ElevenLabs API Key', placeholder: 'xi-api-key', secret: true }]
+  },
+  {
     id: 'higgsfield',
     label: 'Higgsfield API',
     description: 'Use your own Open Higgsfield API balance for embedded visual generation.',
@@ -84,6 +90,7 @@ export const IntegrationCenter: React.FC = () => {
     gemini: {},
     mureka: {},
     suno: {},
+    elevenlabs: {},
     higgsfield: {}
   });
   const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
@@ -108,6 +115,7 @@ export const IntegrationCenter: React.FC = () => {
         gemini: byokService.get('gemini') || {},
         mureka: byokService.get('mureka') || {},
         suno: byokService.get('suno') || {},
+        elevenlabs: byokService.get('elevenlabs') || {},
         higgsfield: byokService.get('higgsfield') || {}
       });
       setByokVersion(v => v + 1);
