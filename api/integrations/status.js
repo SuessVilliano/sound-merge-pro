@@ -84,6 +84,17 @@ export default async function handler(req, res) {
       note: configured("GEMINI_API_KEY") ? "Server-side prompt generation ready." : "Add GEMINI_API_KEY."
     },
     {
+      id: "elevenlabs_music",
+      label: "ElevenLabs Music v2.5",
+      category: "music_generation",
+      configured: configured("ELEVENLABS_API_KEY"),
+      mode: configured("ELEVENLABS_API_KEY") ? "api" : "not_configured",
+      real: configured("ELEVENLABS_API_KEY"),
+      note: configured("ELEVENLABS_API_KEY")
+        ? "Eleven Music v2.5 is available for in-app music generation. Artists can override it with BYOK."
+        : "Add ELEVENLABS_API_KEY or let artists use BYOK. Music v2.5 supports vocals, instrumentals, composition plans, Audio Reference and inpainting."
+    },
+    {
       id: "suno",
       label: "Suno",
       category: "music_generation",
