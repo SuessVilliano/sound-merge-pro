@@ -1,4 +1,5 @@
 import { auth } from './firebase';
+import { byokService } from './byokService';
 
 export const artworkService = {
   async generate(input: {
@@ -16,7 +17,8 @@ export const artworkService = {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...byokService.headers('gemini')
       },
       body: JSON.stringify(input)
     });
