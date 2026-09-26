@@ -77,8 +77,8 @@ export const releaseRailsService = {
         splitsConfirmed: writers.length > 0 && writers.every(w => w.share > 0) && Math.abs(writers.reduce((a, b) => a + b.share, 0) - 100) < 0.01,
         samplesCleared: false,
         voiceLikenessCleared: false,
-        aiAssisted: true,
-        humanAuthorshipNotes: ''
+        aiAssisted: Boolean(submission.metadata?.aiAssisted),
+        humanAuthorshipNotes: submission.metadata?.humanAuthorshipNotes || ''
       },
       links: {},
       rails: {
