@@ -15,3 +15,6 @@ Validation scope:
 - BYOK for Gemini, Mureka, Suno, ElevenLabs and Higgsfield
 - Eleven Music v2.5
 - truth-first dashboard/revenue states
+
+
+CI retry after upload-icon compatibility fix and Eleven Music v2.5 integration.
