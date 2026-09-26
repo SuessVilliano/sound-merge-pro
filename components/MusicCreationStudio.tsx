@@ -12,11 +12,10 @@ import {
 } from 'lucide-react';
 import { musicGenService, MusicEngine, ForgeOptions } from '../services/musicGenService';
 import { separateAudioWithKits } from '../services/audioService';
-import { klingService, KlingMode, KlingConfig } from '../services/klingService';
 import { dataService } from '../services/dataService';
 import { getStudioAgentSuggestions } from '../services/geminiService';
 import { studioPromptService } from '../services/studioPromptService';
-import { User, StemResult, StudioSuggestion, StudioAgent, VideoGenerationJob, Track } from '../types';
+import { User, StemResult, StudioSuggestion, StudioAgent, Track } from '../types';
 import { usePlayer } from '../contexts/PlayerContext';
 
 interface MusicCreationStudioProps {
@@ -64,17 +63,9 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
   const voiceMemoRecorderRef = useRef<MediaRecorder | null>(null);
   const voiceMemoChunksRef = useRef<Blob[]>([]);
 
-  // Cinema Forge (Kling AI) Expanded State
-  const [klingMode, setKlingMode] = useState<KlingMode>('text_to_video');
+  // Visual Studio handoff
   const [selectedVideoTrack, setSelectedVideoTrack] = useState<Track | null>(null);
   const [videoPrompt, setVideoPrompt] = useState('');
-  const [activeVideoJob, setActiveVideoJob] = useState<VideoGenerationJob | null>(null);
-  const [videoHistory, setVideoHistory] = useState<VideoGenerationJob[]>([]);
-  
-  // Advanced Kling Parameters
-  const [motionScore, setMotionScore] = useState(5);
-  const [cameraControl, setCameraControl] = useState({ pan: 0, tilt: 0, zoom: 0 });
-  const [isAdvancedKling, setIsAdvancedKling] = useState(false);
 
   // Studio Agents State
   const [agents, setAgents] = useState<StudioAgent[]>(INITIAL_AGENTS);
@@ -325,61 +316,20 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
       }
   };
 
-  const handleCinemaForge = async () => {
-      if (!selectedVideoTrack || !videoPrompt) return;
-      
-      const cost = klingMode === 'extension' ? 15 : 10;
-      if (user.credits < cost) {
-          alert(`Insufficient Forge Credits. This node requires ${cost} credits.`);
-          onUpgrade();
-          return;
-      }
+  const handleVisualStudioHandoff = () => {
+      const brief = {
+          trackId: selectedVideoTrack?.id || '',
+          trackTitle: selectedVideoTrack?.title || songTitle || '',
+          audioUrl: selectedVideoTrack?.audioUrl || '',
+          artworkUrl: (selectedVideoTrack as any)?.image || (selectedVideoTrack as any)?.imageUrl || '',
+          prompt: videoPrompt.trim(),
+          lyrics,
+          artistName: user.displayName || '',
+          source: 'ai-studio'
+      };
 
-      setIsProcessing(true);
-      setOperationalMessage(`Handshaking Kling ${klingMode.replace('_', ' ').toUpperCase()} Node...`);
-
-      try {
-          const config: KlingConfig = {
-              mode: klingMode,
-              prompt: videoPrompt,
-              motion_score: motionScore,
-              camera_control: isAdvancedKling ? cameraControl : undefined,
-              aspect_ratio: '16:9'
-          };
-
-          const job = await klingService.forgeVideo(selectedVideoTrack, config);
-
-          const success = await dataService.deductCredits(user.uid, cost);
-          if (!success) throw new Error("Credit settlement failed.");
-
-          setActiveVideoJob(job);
-          setVideoHistory(prev => [job, ...prev]);
-          await dataService.saveVideoJob(user.uid, job);
-
-          // Simulated High-Fidelity Polling
-          let progress = 0;
-          const pollInterval = setInterval(async () => {
-              const next = klingService.getNextProgress(progress, klingMode);
-              progress = next.progress;
-              setOperationalMessage(next.message);
-
-              if (progress >= 100) {
-                  clearInterval(pollInterval);
-                  const finalUrl = await klingService.getDownloadUrl(job.id);
-                  const finalJob = { ...job, status: 'completed' as const, progress: 100, videoUrl: finalUrl };
-                  setActiveVideoJob(finalJob);
-                  await dataService.saveVideoJob(user.uid, finalJob);
-                  window.dispatchEvent(new CustomEvent('sf-notification', { detail: { title: 'Cinema Node Ready', message: `Visuals for ${selectedVideoTrack.title} finalized.`, type: 'success' } }));
-                  setIsProcessing(false);
-              } else {
-                  setActiveVideoJob(prev => prev ? { ...prev, progress } : null);
-              }
-          }, 3500);
-
-      } catch (e: any) {
-          alert(e.message || "Cinema Forge synchronization failed.");
-          setIsProcessing(false);
-      }
+      sessionStorage.setItem('sf_visual_brief', JSON.stringify(brief));
+      window.dispatchEvent(new CustomEvent('sf-navigate', { detail: { view: 'visual-studio' } }));
   };
 
   const handleSeparateStems = async () => {
@@ -407,10 +357,10 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
 
   const syncLyricsToVideo = () => {
       if (selectedVideoTrack) {
-          // Logic: Clean lyrics and append to prompt to drive Kling's temporal consistency
+          // Enrich the Higgsfield visual brief with lyric context
           const lyricSnippet = lyrics ? ` Visual narrative based on these lyrics: "${lyrics.substring(0, 100)}..."` : "";
           setVideoPrompt(prev => prev + lyricSnippet);
-          window.dispatchEvent(new CustomEvent('sf-notification', { detail: { title: 'Temporal Sync Active', message: 'Visual prompt enriched with lyrical metadata.', type: 'info' } }));
+          window.dispatchEvent(new CustomEvent('sf-notification', { detail: { title: 'Temporal Sync Active', message: 'Higgsfield visual brief enriched with lyric context.', type: 'info' } }));
       }
   };
 
@@ -521,105 +471,57 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
 
                 {activeTab === 'cinema' && (
                     <div className="space-y-6">
-                        <div className="bg-purple-900/10 border border-purple-500/20 p-5 rounded-[1.5rem] flex flex-col items-center text-center">
-                            <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em] mb-4">Kling Forge Nodes</h4>
-                            <div className="grid grid-cols-4 gap-2 w-full">
-                                {[
-                                    { id: 'text_to_video', icon: Type, label: 'Omni' },
-                                    { id: 'image_to_video', icon: ImageIcon, label: 'Visual' },
-                                    { id: 'lip_sync', icon: Languages, label: 'LipSync' },
-                                    { id: 'extension', icon: Expand, label: 'Long' }
-                                ].map(node => (
-                                    <button 
-                                        key={node.id} 
-                                        onClick={() => setKlingMode(node.id as any)}
-                                        className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all ${klingMode === node.id ? 'bg-purple-500 text-white border-purple-400 shadow-lg' : 'bg-slate-950 border-slate-800 text-slate-500'}`}
+                        <div className="rounded-[1.5rem] border border-fuchsia-500/20 bg-fuchsia-500/5 p-5">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 rounded-xl bg-fuchsia-500/10 flex items-center justify-center">
+                                    <Film className="w-5 h-5 text-fuchsia-300" />
+                                </div>
+                                <div>
+                                    <h4 className="text-[10px] font-black text-white uppercase tracking-[0.2em]">Higgsfield Visual Studio</h4>
+                                    <p className="text-[9px] text-slate-500 mt-1">Carry this song into the official Web / MCP / API visual workflow.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Source Track</label>
+                            <div className="grid grid-cols-1 gap-2 max-h-40 overflow-y-auto custom-scrollbar">
+                                {forgeHistory.length === 0 ? (
+                                    <p className="text-[9px] text-slate-600 italic uppercase">Create or upload music first, or continue without a selected track.</p>
+                                ) : forgeHistory.map(track => (
+                                    <button
+                                        key={track.id}
+                                        onClick={() => setSelectedVideoTrack(track)}
+                                        className={`w-full text-left p-3 rounded-xl border flex items-center gap-3 transition-all ${selectedVideoTrack?.id === track.id ? 'bg-fuchsia-500/10 border-fuchsia-500' : 'bg-slate-950 border-slate-800'}`}
                                     >
-                                        <node.icon className="w-3.5 h-3.5" />
-                                        <span className="text-[7px] font-black uppercase">{node.label}</span>
+                                        {(track.image || track.imageUrl) ? (
+                                            <img src={track.image || track.imageUrl} className="w-8 h-8 rounded-lg object-cover" />
+                                        ) : (
+                                            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center"><Music className="w-4 h-4 text-slate-600" /></div>
+                                        )}
+                                        <span className="text-[10px] font-bold text-white truncate uppercase tracking-tight">{track.title}</span>
                                     </button>
                                 ))}
                             </div>
-                            <p className="text-[7px] text-slate-500 mt-3 font-bold uppercase tracking-widest">
-                                {klingMode === 'lip_sync' ? 'Syncs vocals to your visual avatar identity.' : 'High-fidelity cinematic generation node.'}
-                            </p>
                         </div>
 
                         <div className="space-y-2">
-                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex justify-between">
-                                 Source Track Node
-                                 <span className="text-purple-400 font-mono">{user.credits || 0} CR</span>
-                             </label>
-                             <div className="grid grid-cols-1 gap-2 max-h-32 overflow-y-auto custom-scrollbar">
-                                 {forgeHistory.length === 0 ? (
-                                     <p className="text-[9px] text-slate-600 italic uppercase">Forge a track first to enable video synthesis.</p>
-                                 ) : forgeHistory.map(track => (
-                                     <button 
-                                        key={track.id} 
-                                        onClick={() => setSelectedVideoTrack(track)}
-                                        className={`w-full text-left p-3 rounded-xl border flex items-center gap-3 transition-all ${selectedVideoTrack?.id === track.id ? 'bg-purple-500/10 border-purple-500 shadow-lg' : 'bg-slate-950 border-slate-800 opacity-60'}`}
-                                     >
-                                         <img src={track.image || track.imageUrl} className="w-8 h-8 rounded-lg object-cover" />
-                                         <span className="text-[10px] font-bold text-white truncate uppercase tracking-tight">{track.title}</span>
-                                     </button>
-                                 ))}
-                             </div>
-                        </div>
-
-                        <div className="space-y-2">
-                             <div className="flex justify-between items-center mb-1">
-                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Visual Strategy</label>
-                                <button onClick={syncLyricsToVideo} className="text-[8px] font-black uppercase text-cyan-400 hover:text-white flex items-center gap-1"><RefreshCw className="w-2.5 h-2.5" /> Sync Lyrics</button>
-                             </div>
-                             <textarea 
+                            <div className="flex justify-between items-center mb-1">
+                                <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Visual Brief</label>
+                                <button onClick={syncLyricsToVideo} className="text-[8px] font-black uppercase text-cyan-400 hover:text-white flex items-center gap-1">
+                                    <RefreshCw className="w-2.5 h-2.5" /> Add Lyrics
+                                </button>
+                            </div>
+                            <textarea
                                 value={videoPrompt}
                                 onChange={(e) => setVideoPrompt(e.target.value)}
-                                placeholder="Describe the scene. Kling AI will synchronize these visuals with your audio gradients..." 
-                                className="w-full h-32 bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-white resize-none outline-none focus:border-purple-500" 
-                             />
+                                placeholder="Describe the video, cover-to-video world, performance, lip sync, dancing, locations, camera language, wardrobe, recurring character, etc."
+                                className="w-full h-40 bg-slate-950 border border-slate-800 rounded-xl p-4 text-xs text-white resize-none outline-none focus:border-fuchsia-500"
+                            />
                         </div>
 
-                        {/* ADVANCED KLING CONTROLS */}
-                        <div className="space-y-4">
-                            <button 
-                                onClick={() => setIsAdvancedKling(!isAdvancedKling)}
-                                className="w-full flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-slate-500 py-1 hover:text-white transition-colors"
-                            >
-                                <span>Master Motion Gradients</span>
-                                <Sliders className="w-3 h-3" />
-                            </button>
-                            
-                            {isAdvancedKling && (
-                                <div className="space-y-4 animate-in slide-in-from-top-2">
-                                    <div>
-                                        <div className="flex justify-between text-[8px] font-black uppercase text-slate-600 mb-1">
-                                            <span>Motion Intensity</span>
-                                            <span className="text-purple-400">{motionScore}</span>
-                                        </div>
-                                        <input type="range" min="1" max="10" value={motionScore} onChange={e => setMotionScore(parseInt(e.target.value))} className="w-full h-1 bg-slate-800 rounded-full appearance-none accent-purple-500" />
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-3">
-                                        {['pan', 'tilt', 'zoom'].map(ctrl => (
-                                            <div key={ctrl}>
-                                                <label className="text-[7px] font-black uppercase text-slate-600 block mb-1">{ctrl} vector</label>
-                                                <input 
-                                                    type="number" 
-                                                    value={(cameraControl as any)[ctrl]} 
-                                                    onChange={e => setCameraControl({...cameraControl, [ctrl]: parseInt(e.target.value)})}
-                                                    className="w-full bg-slate-950 border border-slate-800 rounded px-2 py-1 text-[10px] text-white font-mono"
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                        
-                        <div className="bg-slate-950/50 border border-slate-800 rounded-xl p-4">
-                            <div className="flex items-center justify-between text-[9px] font-black text-slate-500 uppercase tracking-widest">
-                                <span>Node Cost</span>
-                                <span className="text-purple-400">{klingMode === 'extension' ? '15' : '10'} Credits</span>
-                            </div>
+                        <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 text-[10px] text-slate-500 leading-relaxed">
+                            Sound Merge will pass this brief to Visual Studio. Higgsfield Web is best for native plan value, MCP for agent-directed work, and API for embedded programmatic generation.
                         </div>
                     </div>
                 )}
@@ -671,12 +573,11 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
                     </div>
                 )}
                 {activeTab === 'cinema' && (
-                    <button 
-                        onClick={handleCinemaForge}
-                        disabled={isProcessing || !videoPrompt || !selectedVideoTrack}
-                        className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-xl hover:scale-[1.02] disabled:opacity-30 flex items-center justify-center gap-3"
+                    <button
+                        onClick={handleVisualStudioHandoff}
+                        className="w-full py-4 bg-gradient-to-r from-fuchsia-600 to-violet-600 text-white font-black uppercase tracking-widest rounded-xl transition-all shadow-xl hover:scale-[1.02] flex items-center justify-center gap-3"
                     >
-                        {isProcessing ? <><Loader2 className="w-5 h-5 animate-spin" /> ENGAGING NODE...</> : <><Clapperboard className="w-5 h-5" /> FORGE CINEMA</>}
+                        <Video className="w-5 h-5" /> CONTINUE TO HIGGSFIELD VISUAL STUDIO
                     </button>
                 )}
                 {activeTab === 'separator' && (
@@ -739,81 +640,36 @@ export const MusicCreationStudio: React.FC<MusicCreationStudioProps> = ({ user, 
                     
                     <div className="lg:col-span-8 space-y-12">
                         {activeTab === 'cinema' && (
-                            <div className="space-y-12">
-                                <div className="flex justify-between items-center border-b border-slate-800 pb-6">
+                            <div className="space-y-8">
+                                <div className="border-b border-slate-800 pb-6">
                                     <h2 className="text-3xl font-black text-white uppercase tracking-widest flex items-center gap-4 italic">
-                                        <Film className="w-8 h-8 text-purple-500" /> Cinema Ledger
+                                        <Film className="w-8 h-8 text-fuchsia-500" /> Visual Handoff
                                     </h2>
+                                    <p className="text-sm text-slate-500 mt-3 max-w-2xl">
+                                        Music creation stays here. Final artwork, recurring-character work, lip sync, motion transfer and music-video generation continue in Higgsfield Visual Studio.
+                                    </p>
                                 </div>
 
-                                {activeVideoJob && (
-                                    <div className="bg-slate-900 border-2 border-purple-500/30 rounded-[3rem] p-10 animate-in zoom-in duration-500 shadow-2xl">
-                                        <div className="flex flex-col md:flex-row gap-10">
-                                            <div className="w-full md:w-64 aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl relative group">
-                                                {activeVideoJob.status === 'completed' && activeVideoJob.videoUrl ? (
-                                                    <video controls src={activeVideoJob.videoUrl} className="w-full h-full object-cover" />
-                                                ) : (
-                                                    <div className="w-full h-full flex flex-col items-center justify-center gap-4 bg-slate-950">
-                                                        <Loader2 className="w-10 h-10 text-purple-500 animate-spin" />
-                                                        <span className="text-[10px] font-black text-slate-700 uppercase tracking-widest">Rendering Frames...</span>
-                                                    </div>
-                                                )}
-                                                {activeVideoJob.status === 'processing' && (
-                                                    <div className="absolute inset-0 bg-black/40 flex items-end p-4">
-                                                        <div className="w-full h-1 bg-slate-800 rounded-full overflow-hidden">
-                                                            <div className="h-full bg-purple-500 transition-all duration-1000" style={{ width: `${activeVideoJob.progress}%` }}></div>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                            </div>
-                                            <div className="flex-1 space-y-6">
-                                                <div>
-                                                    <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-1 block">Institutional Prompt</span>
-                                                    <p className="text-xs text-white font-medium italic leading-relaxed">"{activeVideoJob.prompt}"</p>
-                                                </div>
-                                                <div className="flex gap-4">
-                                                    <div className="bg-slate-950 px-4 py-2 rounded-xl border border-slate-800">
-                                                        <div className="text-[8px] font-black text-slate-500 uppercase">Provider</div>
-                                                        <div className="text-xs font-black text-white">KLING-NODE-1.5</div>
-                                                    </div>
-                                                    <div className="bg-slate-950 px-4 py-2 rounded-xl border border-slate-800">
-                                                        <div className="text-[8px] font-black text-slate-500 uppercase">Status</div>
-                                                        <div className="text-xs font-black text-purple-400 uppercase">{activeVideoJob.status}</div>
-                                                    </div>
-                                                </div>
-                                                {activeVideoJob.status === 'completed' && (
-                                                    <button className="w-full py-3 bg-white text-slate-950 rounded-xl font-black uppercase text-[10px] tracking-widest shadow-xl flex items-center justify-center gap-2 hover:scale-[1.02] transition-all">
-                                                        <Download className="w-4 h-4" /> Save to Catalog
-                                                    </button>
-                                                )}
-                                            </div>
+                                <div className="rounded-[2rem] border border-fuchsia-500/20 bg-fuchsia-500/5 p-8">
+                                    <div className="text-[9px] font-black uppercase tracking-[0.22em] text-fuchsia-300">Prepared Context</div>
+                                    <div className="grid md:grid-cols-2 gap-4 mt-5">
+                                        <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                                            <div className="text-[9px] text-slate-600 uppercase font-black">Track</div>
+                                            <div className="text-sm text-white font-bold mt-1">{selectedVideoTrack?.title || 'No track selected'}</div>
+                                        </div>
+                                        <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+                                            <div className="text-[9px] text-slate-600 uppercase font-black">Lyrics attached</div>
+                                            <div className="text-sm text-white font-bold mt-1">{lyrics.trim() ? 'Yes' : 'No'}</div>
                                         </div>
                                     </div>
-                                )}
-
-                                {videoHistory.length > 1 && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                        {videoHistory.slice(1).map(v => (
-                                            <div key={v.id} className="bg-slate-900/40 border border-slate-800 rounded-[2rem] p-5 flex items-center gap-4 group hover:border-purple-500/50 transition-all">
-                                                <div className="w-20 h-12 bg-black rounded-lg overflow-hidden shrink-0">
-                                                    <img src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?w=200" className="w-full h-full object-cover opacity-50" />
-                                                </div>
-                                                <div className="flex-1 min-0">
-                                                    <h4 className="text-[10px] font-black text-white uppercase truncate tracking-tight">{v.prompt}</h4>
-                                                    <span className="text-[8px] font-bold text-slate-600 uppercase">Archive ID: {v.id.slice(-6)}</span>
-                                                </div>
-                                                <Play className="w-4 h-4 text-slate-600 group-hover:text-purple-400 transition-colors" />
-                                            </div>
-                                        ))}
+                                    <div className="rounded-xl border border-slate-800 bg-slate-950 p-4 mt-4">
+                                        <div className="text-[9px] text-slate-600 uppercase font-black">Visual brief</div>
+                                        <p className="text-sm text-slate-300 mt-2 whitespace-pre-wrap">{videoPrompt.trim() || 'Add a visual direction in the left panel.'}</p>
                                     </div>
-                                )}
-
-                                {videoHistory.length === 0 && !isProcessing && (
-                                    <div className="h-64 flex flex-col items-center justify-center text-slate-800 opacity-20 border-4 border-dashed border-slate-900 rounded-[4rem]">
-                                        <Clapperboard className="w-24 h-24 mb-4" />
-                                        <p className="text-xl font-black uppercase tracking-widest italic">Director Deck Idle</p>
-                                    </div>
-                                )}
+                                    <button onClick={handleVisualStudioHandoff} className="mt-5 w-full py-3 rounded-xl bg-fuchsia-500 hover:bg-fuchsia-400 text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2">
+                                        <Video className="w-4 h-4" /> Open Visual Studio
+                                    </button>
+                                </div>
                             </div>
                         )}
 
