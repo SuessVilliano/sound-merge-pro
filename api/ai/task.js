@@ -1,10 +1,10 @@
 import { requireUser } from "../_lib/auth.js";
+import { getByokKey } from "../_lib/byok.js";
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
-const callGemini = async ({ prompt, json = false, image }) => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw Object.assign(new Error("Gemini is not configured"), { status: 503 });
+const callGemini = async ({ prompt, json = false, image, apiKey }) => {
+  if (!apiKey) throw Object.assign(new Error("Gemini is not configured. Add your Gemini key in Integration Center."), { status: 503 });
 
   const parts = [{ text: prompt }];
   if (image?.data && image?.mimeType) {
@@ -42,6 +42,8 @@ export default async function handler(req, res) {
   if (!user) return;
 
   const { task, payload = {} } = req.body || {};
+  const byokKey = getByokKey(req);
+  const apiKey = byokKey || process.env.GEMINI_API_KEY;
 
   try {
     switch (task) {
@@ -50,6 +52,7 @@ export default async function handler(req, res) {
         const goal = context?.user?.primaryGoal ? `Primary goal: ${context.user.primaryGoal}.` : "";
         const pending = Array.isArray(context?.pendingDistributions) ? context.pendingDistributions.length : 0;
         const text = await callGemini({
+          apiKey,
           prompt: `You are an elite music-industry strategist inside Sound Merge.
 Respond in plain text only, concise and actionable, maximum 3 sentences.
 Current app view: ${context.currentView || "unknown"}.
@@ -64,6 +67,7 @@ User message: ${message}`
 
       case "studio_suggestions": {
         const result = await callGemini({
+          apiKey,
           json: true,
           prompt: `Act as a professional music production team.
 Style: "${payload.styleInput || ""}"
@@ -77,6 +81,7 @@ Do not imitate a living artist by name; describe musical characteristics directl
 
       case "parse_brief": {
         const data = await callGemini({
+          apiKey,
           json: true,
           prompt: `Normalize this music sync opportunity into structured JSON. Preserve only facts present in the input.
 Useful keys: title, description, mediaType, deadline, budget, requiredGenres, moods, tempo, vocal, references, deliverables, usage, territory.
@@ -89,6 +94,7 @@ ${payload.rawText || ""}`
       case "brief_artifacts": {
         const brief = payload.brief || {};
         const data = await callGemini({
+          apiKey,
           json: true,
           prompt: `Create a production blueprint for this sync brief:
 Title: ${brief.title || ""}
@@ -105,6 +111,7 @@ Return JSON with exactly:
       case "pitch_email": {
         const opportunity = payload.opportunity || {};
         const text = await callGemini({
+          apiKey,
           prompt: `Write a concise professional music licensing pitch email body for the opportunity "${opportunity.brief_title || ""}" using track "${payload.trackTitle || ""}". Do not invent credits, placements, rights status, or metrics.`
         });
         return res.status(200).json({ text });
@@ -112,6 +119,7 @@ Return JSON with exactly:
 
       case "battle_commentary": {
         const text = await callGemini({
+          apiKey,
           prompt: `Write one energetic but neutral sentence introducing a ${payload.genre || ""} music battle: ${payload.p1 || ""} vs ${payload.p2 || ""}. Status: ${payload.status || ""}.`
         });
         return res.status(200).json({ text });
@@ -120,6 +128,7 @@ Return JSON with exactly:
       case "proactive_proposal": {
         const context = payload.context || {};
         const data = await callGemini({
+          apiKey,
           json: true,
           prompt: `You are an AI staff member in Sound Merge.
 Role: ${context.agentRole || "manager"}
@@ -137,6 +146,7 @@ Do not invent external data; base it only on the supplied context.`
         const mimeType = match?.[1] || "image/png";
         const imageData = match?.[2] || raw;
         const data = await callGemini({
+          apiKey,
           json: true,
           image: { mimeType, data: imageData },
           prompt: "List the visible objects, visual themes, and design traits in this image as a JSON array of short strings."
