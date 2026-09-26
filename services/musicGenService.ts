@@ -1,5 +1,6 @@
 import { GeneratedTrack, generateFallbackAudioUrl } from './audioService';
 import { auth } from './firebase';
+import { byokService } from './byokService';
 
 /**
  * Sound Merge music generation gateway.
@@ -33,12 +34,14 @@ interface ProviderJob {
     duration?: number | string | null;
 }
 
-const getAuthHeaders = async () => {
+const getAuthHeaders = async (provider?: MusicEngine) => {
     const token = await auth.currentUser?.getIdToken();
     if (!token) throw new Error('Sign in to generate music.');
     return {
         'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        ...(provider === 'mureka' ? byokService.headers('mureka') : {}),
+        ...(provider === 'suno' ? byokService.headers('suno') : {})
     };
 };
 
@@ -81,7 +84,7 @@ export const musicGenService = {
             throw new Error('Udio does not currently expose a public API. Use a browser-agent workflow for Udio, or select Suno/Mureka for API generation.');
         }
 
-        const headers = await getAuthHeaders();
+        const headers = await getAuthHeaders(options.engine);
         const response = await fetch('/api/music/generate', {
             method: 'POST',
             headers,
