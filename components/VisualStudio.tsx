@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { ArtworkGenerator } from './ArtworkGenerator';
 import {
   Video, ExternalLink, Bot, Code2, Sparkles, Copy, Film, Mic2, Users,
   Zap, CheckCircle2, Workflow, Wand2
@@ -102,6 +103,8 @@ export const VisualStudio: React.FC = () => {
           </p>
         </div>
       </div>
+
+      <ArtworkGenerator />
 
       <div className="grid lg:grid-cols-3 gap-4">
         {MODES.map(mode => {
