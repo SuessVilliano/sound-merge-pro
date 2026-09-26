@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import {
-  X, Library, UploadCloud, Music2, ImagePlus, Trash2, Loader2,
+  X, Library, Upload, Music2, ImagePlus, Trash2, Loader2,
   CheckCircle2, Link2, Barcode, CalendarDays
 } from 'lucide-react';
 import { User, ReleaseRailRecord, ReleaseType } from '../types';
@@ -235,7 +235,7 @@ export const CatalogImportModal: React.FC<CatalogImportModalProps> = ({ isOpen, 
           <div>
             <div className="flex items-center justify-between gap-3 mb-3">
               <div><h3 className="text-white font-black">Masters</h3><p className="text-xs text-slate-500">Upload the final files you already own. Add existing ISRCs when known.</p></div>
-              <button onClick={() => fileInput.current?.click()} className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><UploadCloud className="w-4 h-4" /> Add Masters</button>
+              <button onClick={() => fileInput.current?.click()} className="px-4 py-2 rounded-xl bg-cyan-500 text-slate-950 text-[10px] font-black uppercase tracking-widest flex items-center gap-2"><Upload className="w-4 h-4" /> Add Masters</button>
               <input ref={fileInput} type="file" accept="audio/*" multiple className="hidden" onChange={e => addFiles(e.target.files)} />
             </div>
 
