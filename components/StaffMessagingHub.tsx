@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Search, MoreHorizontal, Bot, User, Phone, Video, Info, CheckCheck, Loader2, Sparkles, Briefcase, Zap, Shield, Globe, Mic, Users, BrainCircuit, ArrowRight, TrendingUp, AlertTriangle, Layers, MessageSquare } from 'lucide-react';
-import { AiStaffMember, StaffMessage, StaffProposal } from '../types';
+import { AiStaffMember, StaffMessage, StaffProposal, Stats } from '../types';
 import { chatWithGemini, generateProactiveProposal } from '../services/geminiService';
-import { MOCK_STATS } from '../constants';
 import { authService } from '../services/authService';
+import { dataService } from '../services/dataService';
 
 const TEAM_HUB_AGENT: AiStaffMember = { 
     id: 'team-hub', 
@@ -17,11 +17,11 @@ const TEAM_HUB_AGENT: AiStaffMember = {
 
 const INITIAL_STAFF: AiStaffMember[] = [
     TEAM_HUB_AGENT,
-    { id: 'mgr', name: 'James', role: 'manager', avatar: 'https://ui-avatars.com/api/?name=James+Manager&background=020617&color=fff', online: true, description: 'Executive Strategy & Business Coordination', lastMessage: "Let's review your Q3 plan." },
-    { id: 'mkt', name: 'Elena', role: 'marketing', avatar: 'https://ui-avatars.com/api/?name=Elena+Mkt&background=06b6d4&color=fff', online: true, description: 'Growth, Socials & Hype', lastMessage: "Your TikTok engagement is up 20%!" },
-    { id: 'bkg', name: 'Rick', role: 'booking', avatar: 'https://ui-avatars.com/api/?name=Rick+Agent&background=8b5cf6&color=fff', online: false, description: 'Shows, Tours & Negotiations', lastMessage: "Found 3 clubs in Berlin for October." },
-    { id: 'dst', name: 'Sarah', role: 'distribution', avatar: 'https://ui-avatars.com/api/?name=Sarah+Dist&background=10b981&color=fff', online: true, description: 'Store Submissions & Metadata', lastMessage: "New single is live on Apple Music." },
-    { id: 'lgl', name: 'Marcus', role: 'legal', avatar: 'https://ui-avatars.com/api/?name=Marcus+Legal&background=f43f5e&color=fff', online: true, description: 'Voice IP & Rights Protection', lastMessage: "Secured your latest VoiceShield hash." },
+    { id: 'mgr', name: 'James', role: 'manager', avatar: 'https://ui-avatars.com/api/?name=James+Manager&background=020617&color=fff', online: true, description: 'Executive Strategy & Business Coordination', lastMessage: "Ready to review your real catalog, releases, and goals." },
+    { id: 'mkt', name: 'Elena', role: 'marketing', avatar: 'https://ui-avatars.com/api/?name=Elena+Mkt&background=06b6d4&color=fff', online: true, description: 'Growth, Socials & Hype', lastMessage: "Connect audience data or a release and I’ll build the rollout." },
+    { id: 'bkg', name: 'Rick', role: 'booking', avatar: 'https://ui-avatars.com/api/?name=Rick+Agent&background=8b5cf6&color=fff', online: true, description: 'Shows, Tours & Negotiations', lastMessage: "Add your markets and venue goals to start booking research." },
+    { id: 'dst', name: 'Sarah', role: 'distribution', avatar: 'https://ui-avatars.com/api/?name=Sarah+Dist&background=10b981&color=fff', online: true, description: 'Store Submissions & Metadata', lastMessage: "I can review Release Rails and identify what is actually ready." },
+    { id: 'lgl', name: 'Marcus', role: 'legal', avatar: 'https://ui-avatars.com/api/?name=Marcus+Legal&background=f43f5e&color=fff', online: true, description: 'Rights, Splits & Registration Readiness', lastMessage: "I can check identifiers, splits, and registration gaps without claiming filings are complete." },
 ];
 
 interface StaffMessagingHubProps {
@@ -35,6 +35,18 @@ export const StaffMessagingHub: React.FC<StaffMessagingHubProps> = ({ chatThread
     const [proposals, setProposals] = useState<StaffProposal[]>([]);
     const [isThinking, setIsThinking] = useState(false);
     const [activeTypingAgents, setActiveTypingAgents] = useState<string[]>([]);
+    const [realStats, setRealStats] = useState<Stats>({
+        totalEarnings: 0,
+        totalStreams: 0,
+        activeOpportunities: 0,
+        brandScore: '-',
+        earningsGrowth: 0,
+        streamsGrowth: 0,
+        opportunitiesNew: false,
+        artistLevel: user?.artistLevel || 'New Artist',
+        xp: user?.xp || 0,
+        nextLevelXp: Math.max((user?.xp || 0) + 1000, 1000)
+    });
     
     const [input, setInput] = useState('');
     const [isTyping, setIsTyping] = useState(false);
@@ -43,6 +55,11 @@ export const StaffMessagingHub: React.FC<StaffMessagingHubProps> = ({ chatThread
     const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     useEffect(() => { scrollToBottom(); }, [chatThreads, selectedAgent.id]);
 
+    useEffect(() => {
+        if (!user?.uid) return;
+        dataService.getRealStats(user.uid).then(setRealStats).catch(() => {});
+    }, [user?.uid]);
+
     // Proactive Intelligence
     useEffect(() => {
         const interval = setInterval(async () => {
@@ -50,7 +67,7 @@ export const StaffMessagingHub: React.FC<StaffMessagingHubProps> = ({ chatThread
             setIsThinking(true);
             const prop = await generateProactiveProposal({
                 currentView: 'staff',
-                stats: MOCK_STATS,
+                stats: realStats,
                 opportunities: [],
                 user: user || undefined,
                 agentRole: selectedAgent.id === 'team-hub' ? 'Team Hub' : selectedAgent.role
@@ -88,7 +105,7 @@ export const StaffMessagingHub: React.FC<StaffMessagingHubProps> = ({ chatThread
             const history = currentThread.map(m => ({ role: m.role === 'user' ? 'user' : 'model', text: m.text }));
             const response = await chatWithGemini(input, history, {
                 currentView: 'staff',
-                stats: MOCK_STATS,
+                stats: realStats,
                 opportunities: [],
                 user: user || undefined,
                 agentRole: selectedAgent.id === 'team-hub' ? 'Team Hub' : selectedAgent.role
