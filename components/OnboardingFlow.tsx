@@ -4,7 +4,7 @@ import {
     Zap, Globe, Shield, Mic2, Star, LayoutDashboard, Loader2, X, MessageSquare, Users,
     Radio, Camera, Instagram, Facebook, Twitter, Link as LinkIcon, Save, Sparkles, Server,
     FileText, PenTool, ImagePlus, Check, Building2, Users2, Youtube, Video, Globe2, Linkedin, Chrome,
-    ChevronRight, Search, Heart, Signal, Activity, RefreshCw, Library, UploadCloud
+    ChevronRight, Search, Heart, Signal, Activity, RefreshCw, Library, Upload
 } from 'lucide-react';
 import { User } from '../types';
 import { VIEWS } from '../constants';
@@ -205,7 +205,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
                     {
                         id: 'hybrid',
                         title: 'Both',
-                        icon: UploadCloud,
+                        icon: Upload,
                         desc: 'Sync the catalog you already own and keep creating new releases with any workflow you choose.'
                     }
                 ].map(option => (
