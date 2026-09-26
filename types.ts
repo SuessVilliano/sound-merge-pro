@@ -25,6 +25,7 @@ export interface User {
   isAdmin?: boolean;
   onboardingCompleted?: boolean;
   tourCompleted?: boolean; 
+  onboardingMode?: 'create_new' | 'existing_catalog' | 'hybrid';
   role?: 'artist' | 'producer' | 'manager' | 'label_exec' | 'listener';
   primaryGoal?: 'sync_deal' | 'growth' | 'distribution' | 'legal_protection';
   experienceLevel?: 'beginner' | 'intermediate' | 'pro';
