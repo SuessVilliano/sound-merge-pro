@@ -6,10 +6,11 @@ import {
     Disc, Layers, Copy, Check, Calendar, HardDrive, FileAudio, X, Sliders, 
     ChevronDown, ChevronUp, Users, Clock, Loader2, Send, History 
 } from 'lucide-react';
-import { DistributionRelease, DistributionTrack, Contributor, DistributionSubmission } from '../types';
+import { DistributionRelease, DistributionTrack, Contributor, DistributionSubmission, Track } from '../types';
 import { dataService } from '../services/dataService';
 import { authService } from '../services/authService';
 import { releaseRailsService } from '../services/releaseRailsService';
+import { assetStorageService } from '../services/assetStorageService';
 
 const SERVICES_LIST = [ "Spotify", "Apple Music", "iTunes", "Instagram & Facebook", "TikTok", "YouTube Music", "Amazon", "Deezer", "Tidal" ];
 const GENRES = ["Pop", "Hip Hop", "R&B", "Rock", "Electronic", "Latin", "Indie"];
@@ -24,17 +25,27 @@ export const MusicDistribution: React.FC = () => {
   const [trackCount, setTrackCount] = useState(1);
   const [expandedTrackId, setExpandedTrackId] = useState<string | null>(null);
   const [mySubmissions, setMySubmissions] = useState<DistributionSubmission[]>([]);
+  const [catalogTracks, setCatalogTracks] = useState<Track[]>([]);
+  const [aiAssisted, setAiAssisted] = useState(false);
+  const [humanAuthorshipNotes, setHumanAuthorshipNotes] = useState('');
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
 
   const [release, setRelease] = useState<Partial<DistributionSubmission>>({
       title: '',
       artistName: user?.displayName || '',
       releaseDate: new Date().toISOString().split('T')[0],
-      recordLabel: 'Sound Merge Records',
+      recordLabel: 'Independent',
       primaryGenre: 'Pop',
       tracks: []
   });
 
   useEffect(() => { if (view === 'dashboard' && user) loadHistory(); }, [view, user]);
+
+  useEffect(() => {
+      if (!user) return;
+      return dataService.subscribeToTracks(user.uid, (rows: any[]) => setCatalogTracks(rows as Track[]));
+  }, [user?.uid]);
 
   const loadHistory = async () => {
       if (!user) return;
@@ -45,7 +56,8 @@ export const MusicDistribution: React.FC = () => {
   const startRelease = () => {
       const initialTracks: DistributionTrack[] = Array.from({ length: trackCount }).map((_, i) => ({
           id: `t${Date.now()}_${i}`,
-          asset_id: `asset_${crypto.randomUUID()}`,
+          asset_id: '',
+          audioUrl: '',
           title: '',
           isInstrumental: false,
           isExplicit: false,
@@ -72,9 +84,58 @@ export const MusicDistribution: React.FC = () => {
       }));
   };
 
+  const attachCatalogTrack = (slotId: string, assetId: string) => {
+      const source = catalogTracks.find(track => track.id === assetId);
+      if (!source) {
+          setRelease(prev => ({
+              ...prev,
+              tracks: prev.tracks?.map(t => t.id === slotId ? { ...t, asset_id: '', audioUrl: '', title: '' } : t)
+          }));
+          return;
+      }
+
+      setRelease(prev => ({
+          ...prev,
+          tracks: prev.tracks?.map(t => t.id === slotId ? {
+              ...t,
+              asset_id: source.id,
+              audioUrl: source.audioUrl,
+              title: source.title,
+              isInstrumental: Boolean(source.isInstrumental),
+              isExplicit: Boolean(source.isExplicit),
+              isrc: source.isrc || t.isrc,
+              contributors: source.contributors?.length ? source.contributors : t.contributors,
+              p_line: source.recordLabel ? `(P) ${new Date().getFullYear()} ${source.recordLabel}` : t.p_line
+          } : t)
+      }));
+  };
+
+  const handleCoverUpload = async (file?: File) => {
+      if (!file || !user) return;
+      setIsUploadingCover(true);
+      try {
+          const uploaded = await assetStorageService.uploadFile({
+              userId: user.uid,
+              file,
+              filename: file.name,
+              folder: 'artwork'
+          });
+          setRelease(prev => ({ ...prev, coverUrl: uploaded.url }));
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: { title: 'Cover Uploaded', message: 'Release artwork is stored in your Sound Merge account.', type: 'success' }
+          }));
+      } catch (e: any) {
+          window.dispatchEvent(new CustomEvent('sf-notification', {
+              detail: { title: 'Cover Upload', message: e?.message || 'Could not upload artwork.', type: 'error' }
+          }));
+      } finally {
+          setIsUploadingCover(false);
+      }
+  };
+
   const handleSubmit = async () => {
       const tracks = release.tracks || [];
-      const hasTrackMetadata = tracks.length > 0 && tracks.every(t => t.title && t.asset_id);
+      const hasTrackMetadata = tracks.length > 0 && tracks.every(t => t.title && t.asset_id && t.audioUrl);
       if (!release.title || !release.artistName || !release.coverUrl || !hasTrackMetadata) {
           alert("Release title, artist, artwork and every track title are required.");
           return;
@@ -114,7 +175,8 @@ export const MusicDistribution: React.FC = () => {
           metadata: {
               ...(release.metadata || {}),
               releaseType,
-              aiAssisted: true,
+              aiAssisted,
+              humanAuthorshipNotes: aiAssisted ? humanAuthorshipNotes.trim() : '',
               externalSubmissionConfirmed: false
           }
       };
@@ -146,7 +208,7 @@ export const MusicDistribution: React.FC = () => {
               <Bot className="w-16 h-16 text-cyan-400 animate-pulse" />
               <div className="text-center space-y-2">
                   <h2 className="text-2xl font-black text-white uppercase italic">SARAH: Release Coordinator Active</h2>
-                  <p className="text-slate-500 font-medium">Securing your release identity for institutional deployment.</p>
+                  <p className="text-slate-500 font-medium">Preparing your release record from the catalog data you confirmed.</p>
               </div>
               <div className="w-full bg-slate-950 border border-slate-800 rounded-2xl p-6 font-mono text-[10px] h-64 overflow-y-auto">
                   {agentLogs.map((log, i) => (
@@ -182,7 +244,7 @@ export const MusicDistribution: React.FC = () => {
                     </button>
                   ))}
               </div>
-              <button onClick={startRelease} className="w-full py-5 bg-white text-slate-950 font-black uppercase tracking-widest text-sm rounded-2xl shadow-xl transition-all hover:scale-[1.01]">Initialize Metadata Sync</button>
+              <button onClick={startRelease} className="w-full py-5 bg-white text-slate-950 font-black uppercase tracking-widest text-sm rounded-2xl shadow-xl transition-all hover:scale-[1.01]">Choose Tracks & Metadata</button>
           </div>
       );
   }
@@ -192,21 +254,45 @@ export const MusicDistribution: React.FC = () => {
           <div className="max-w-6xl mx-auto space-y-10 py-6 animate-in slide-in-from-bottom-4 duration-500 pb-24">
               <div className="flex justify-between items-center">
                   <button onClick={() => setView('setup')} className="text-[10px] font-black uppercase text-slate-500">← Change Format</button>
-                  <h1 className="text-xl font-black text-white uppercase tracking-[0.3em] italic opacity-40">DISTRIBUTION LEDGER</h1>
+                  <h1 className="text-xl font-black text-white uppercase tracking-[0.3em] italic opacity-40">RELEASE PREPARATION</h1>
                   <div className="w-20"></div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
                   <div className="lg:col-span-4 space-y-6">
-                      <div onClick={() => setRelease({...release, coverUrl: 'https://picsum.photos/400/400?random=release'})} className="aspect-square bg-slate-950 border-2 border-dashed border-slate-800 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer hover:border-cyan-500 transition-all overflow-hidden relative group">
-                          {release.coverUrl ? <img src={release.coverUrl} className="w-full h-full object-cover" /> : <ImageIcon className="w-10 h-10 text-slate-800" />}
-                          <div className="absolute bottom-4 bg-black/60 backdrop-blur px-4 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest text-white opacity-0 group-hover:opacity-100 transition-opacity">Inject Master Artwork</div>
+                      <div className="space-y-3">
+                          <button
+                              type="button"
+                              onClick={() => coverInputRef.current?.click()}
+                              className="w-full aspect-square bg-slate-950 border-2 border-dashed border-slate-800 rounded-[2rem] flex flex-col items-center justify-center cursor-pointer hover:border-cyan-500 transition-all overflow-hidden relative group"
+                          >
+                              {release.coverUrl ? <img src={release.coverUrl} className="w-full h-full object-cover" /> : (
+                                  <div className="text-center">
+                                      {isUploadingCover ? <Loader2 className="w-10 h-10 text-cyan-400 animate-spin mx-auto" /> : <ImageIcon className="w-10 h-10 text-slate-700 mx-auto" />}
+                                      <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 mt-3">Upload Release Artwork</div>
+                                  </div>
+                              )}
+                          </button>
+                          <input
+                              ref={coverInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="hidden"
+                              onChange={e => handleCoverUpload(e.target.files?.[0])}
+                          />
+                          <button
+                              type="button"
+                              onClick={() => window.dispatchEvent(new CustomEvent('sf-navigate', { detail: { view: 'visual-studio' } }))}
+                              className="w-full py-2.5 rounded-xl border border-fuchsia-500/20 bg-fuchsia-500/5 text-fuchsia-300 text-[9px] font-black uppercase tracking-widest"
+                          >
+                              Create Artwork in Visual Studio
+                          </button>
                       </div>
                       
                       <div className="bg-slate-900 border border-slate-800 p-8 rounded-[2rem] space-y-6">
                           <div>
                               <label className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Release Title</label>
-                              <input value={release.title} onChange={e => setRelease({...release, title: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white font-bold outline-none focus:border-cyan-500" placeholder="Genesis Node" />
+                              <input value={release.title} onChange={e => setRelease({...release, title: e.target.value})} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3 text-sm text-white font-bold outline-none focus:border-cyan-500" placeholder="Release title" />
                           </div>
                           <div>
                               <label className="block text-[9px] font-black text-slate-500 uppercase tracking-widest mb-1.5 ml-1">Main Label</label>
@@ -216,7 +302,7 @@ export const MusicDistribution: React.FC = () => {
                   </div>
 
                   <div className="lg:col-span-8 space-y-6">
-                      <h3 className="text-lg font-black text-white uppercase tracking-tight italic mb-4">Track Ledger ({release.tracks?.length})</h3>
+                      <h3 className="text-lg font-black text-white uppercase tracking-tight italic mb-4">Release Tracks ({release.tracks?.length})</h3>
                       <div className="space-y-4">
                           {release.tracks?.map((track, idx) => (
                               <div key={track.id} className={`bg-slate-900 border border-slate-800 rounded-[1.5rem] overflow-hidden transition-all ${expandedTrackId === track.id ? 'border-indigo-500' : ''}`}>
@@ -230,9 +316,28 @@ export const MusicDistribution: React.FC = () => {
                                   
                                   {expandedTrackId === track.id && (
                                       <div className="p-8 bg-slate-950/50 border-t border-slate-800 animate-in slide-in-from-top-2">
+                                          <div className="mb-6 rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4">
+                                              <label className="block text-[9px] font-black text-cyan-300 uppercase tracking-widest mb-2">Choose from My Music</label>
+                                              <select
+                                                  value={track.asset_id}
+                                                  onChange={e => attachCatalogTrack(track.id, e.target.value)}
+                                                  className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-sm text-white"
+                                              >
+                                                  <option value="">Select a real uploaded / generated / imported master…</option>
+                                                  {catalogTracks.filter(item => Boolean(item.audioUrl)).map(item => (
+                                                      <option key={item.id} value={item.id}>{item.title} — {item.artist}</option>
+                                                  ))}
+                                              </select>
+                                              {track.audioUrl ? (
+                                                  <audio src={track.audioUrl} controls className="w-full mt-3 h-9" />
+                                              ) : (
+                                                  <p className="text-[10px] text-amber-300 mt-2">A real catalog master is required before this release can be staged.</p>
+                                              )}
+                                          </div>
+
                                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                               <div className="space-y-4">
-                                                  <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-slate-800 pb-2">Institutional Rights</h5>
+                                                  <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-slate-800 pb-2">Rights & Ownership</h5>
                                                   <div>
                                                       <label className="block text-[8px] font-black text-slate-600 uppercase mb-1">℗ Sound Recording Owner</label>
                                                       <input value={track.p_line} onChange={e => updateTrack(track.id, 'p_line', e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-white outline-none focus:border-indigo-500" />
@@ -243,7 +348,7 @@ export const MusicDistribution: React.FC = () => {
                                                   </div>
                                               </div>
                                               <div className="space-y-4">
-                                                  <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-slate-800 pb-2">Registry Codes</h5>
+                                                  <h5 className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] border-b border-slate-800 pb-2">Recording Codes</h5>
                                                   <div>
                                                       <label className="block text-[8px] font-black text-slate-600 uppercase mb-1">ISRC Code (Optional)</label>
                                                       <input placeholder="Leave blank for distributor assignment" value={track.isrc} onChange={e => updateTrack(track.id, 'isrc', e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl p-3 text-xs text-indigo-400 font-mono" />
@@ -260,6 +365,29 @@ export const MusicDistribution: React.FC = () => {
                                   )}
                               </div>
                           ))}
+                      </div>
+
+                      <div className="rounded-[1.5rem] border border-slate-800 bg-slate-900 p-5">
+                          <div className="flex items-start gap-3">
+                              <input
+                                  type="checkbox"
+                                  checked={aiAssisted}
+                                  onChange={e => setAiAssisted(e.target.checked)}
+                                  className="mt-1 rounded bg-slate-950 border-slate-700"
+                              />
+                              <div className="flex-1">
+                                  <div className="text-[10px] font-black uppercase tracking-widest text-white">AI Assistance Disclosure</div>
+                                  <p className="text-xs text-slate-500 mt-1">Check this only if AI materially assisted the music, lyrics, composition, voice, or production—not merely business/admin tools.</p>
+                                  {aiAssisted && (
+                                      <textarea
+                                          value={humanAuthorshipNotes}
+                                          onChange={e => setHumanAuthorshipNotes(e.target.value)}
+                                          placeholder="Describe the human-authored contribution and how AI was used."
+                                          className="w-full mt-3 min-h-[90px] bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-white"
+                                      />
+                                  )}
+                              </div>
+                          </div>
                       </div>
 
                       <div className="pt-8 border-t border-slate-800 flex justify-end">
@@ -283,7 +411,7 @@ export const MusicDistribution: React.FC = () => {
               <p className="text-slate-400 text-xl font-medium leading-relaxed mb-10">Prepare your release once, then route it through a verified distributor. LabelGrid can provide API/MCP delivery plus downstream analytics and royalty data when connected; existing DistroKid users can use the approval-gated browser-agent route.</p>
               <div className="flex gap-4">
                   <button onClick={() => setView('setup')} className="bg-white text-slate-950 px-10 py-4 rounded-full font-black uppercase tracking-[0.2em] text-xs shadow-2xl hover:scale-105 transition-all">Stage New Release</button>
-                  <button onClick={() => setView('history')} className="bg-slate-800 text-white px-10 py-4 rounded-full font-black uppercase tracking-[0.2em] text-xs shadow-xl flex items-center gap-2 hover:bg-slate-700 transition-all"><History className="w-4 h-4" /> View Vault</button>
+                  <button onClick={() => setView('history')} className="bg-slate-800 text-white px-10 py-4 rounded-full font-black uppercase tracking-[0.2em] text-xs shadow-xl flex items-center gap-2 hover:bg-slate-700 transition-all"><History className="w-4 h-4" /> View Release History</button>
               </div>
           </div>
       </div>
