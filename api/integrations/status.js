@@ -9,6 +9,17 @@ export default async function handler(req, res) {
 
   const providers = [
     {
+      id: "nano_banana",
+      label: "Nano Banana 2 Artwork",
+      category: "image",
+      configured: configured("GEMINI_API_KEY"),
+      mode: configured("GEMINI_API_KEY") ? "api" : "not_configured",
+      real: configured("GEMINI_API_KEY"),
+      note: configured("GEMINI_API_KEY")
+        ? "Gemini 3.1 Flash Image powers in-app release artwork generation and reference-image editing."
+        : "Add GEMINI_API_KEY to enable Nano Banana 2 artwork generation."
+    },
+    {
       id: "sound_merge_mcp",
       label: "Sound Merge MCP",
       category: "automation",
