@@ -1,8 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArtworkGenerator } from './ArtworkGenerator';
+import { higgsfieldApiService, HiggsfieldVideoJob } from '../services/higgsfieldApiService';
+import { byokService } from '../services/byokService';
 import {
   Video, ExternalLink, Bot, Code2, Sparkles, Copy, Film, Mic2, Users,
-  Zap, CheckCircle2, Workflow, Wand2
+  Zap, CheckCircle2, Workflow, Wand2, Loader2, KeyRound, Play, AlertCircle
 } from 'lucide-react';
 
 const MODES = [
@@ -60,6 +62,36 @@ const CURRENT_WORKFLOWS = [
 
 export const VisualStudio: React.FC = () => {
   const [goal, setGoal] = useState('');
+  const [handoffContext, setHandoffContext] = useState<any | null>(null);
+  const [videoJob, setVideoJob] = useState<HiggsfieldVideoJob | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [duration, setDuration] = useState(5);
+  const [aspectRatio, setAspectRatio] = useState<'16:9' | '9:16' | '1:1'>('16:9');
+  const [byokActive, setByokActive] = useState(byokService.has('higgsfield'));
+
+  useEffect(() => {
+    const syncByok = () => setByokActive(byokService.has('higgsfield'));
+    window.addEventListener('sm-byok-updated', syncByok);
+
+    try {
+      const raw = sessionStorage.getItem('sf_visual_brief');
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setHandoffContext(parsed);
+        const parts = [
+          parsed.trackTitle ? `Source track: ${parsed.trackTitle}.` : '',
+          parsed.artistName ? `Artist: ${parsed.artistName}.` : '',
+          parsed.prompt || '',
+          parsed.lyrics ? `Lyric context:\n${String(parsed.lyrics).slice(0, 1600)}` : ''
+        ].filter(Boolean);
+        setGoal(prev => prev || parts.join('\n\n'));
+      }
+    } catch (error) {
+      console.warn('Visual handoff could not be loaded', error);
+    }
+
+    return () => window.removeEventListener('sm-byok-updated', syncByok);
+  }, []);
   const agentBrief = useMemo(() => {
     const subject = goal.trim() || 'Create a polished music video for my current release.';
     return [
@@ -79,6 +111,44 @@ export const VisualStudio: React.FC = () => {
       'Choose the strongest current Higgsfield model for this exact task rather than hardcoding an old model.'
     ].join('\n');
   }, [goal]);
+
+  const generateInApp = async () => {
+    if (!goal.trim()) {
+      window.dispatchEvent(new CustomEvent('sf-notification', {
+        detail: { title: 'Visual Brief Needed', message: 'Describe the scene first.', type: 'info' }
+      }));
+      return;
+    }
+
+    setIsGenerating(true);
+    setVideoJob(null);
+
+    try {
+      const job = await higgsfieldApiService.generateAndWait({
+        prompt: goal,
+        duration,
+        aspectRatio,
+        resolution: '720p',
+        generateAudio: true,
+        modelPath: 'bytedance/seedance-2.0/text-to-video'
+      }, setVideoJob);
+
+      setVideoJob(job);
+      window.dispatchEvent(new CustomEvent('sf-notification', {
+        detail: {
+          title: 'Higgsfield Scene Ready',
+          message: `Generated through ${job.credentialSource === 'artist_byok' ? 'your Higgsfield API key' : 'Sound Merge'}.`,
+          type: 'success'
+        }
+      }));
+    } catch (e: any) {
+      window.dispatchEvent(new CustomEvent('sf-notification', {
+        detail: { title: 'Higgsfield Generation', message: e?.message || 'Generation failed.', type: 'error' }
+      }));
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const copyBrief = async () => {
     await navigator.clipboard.writeText(agentBrief);
@@ -104,7 +174,101 @@ export const VisualStudio: React.FC = () => {
         </div>
       </div>
 
+      {handoffContext && (
+        <div className="rounded-2xl border border-fuchsia-500/20 bg-fuchsia-500/5 p-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <div className="text-[9px] font-black uppercase tracking-[0.22em] text-fuchsia-300">Source from AI Studio</div>
+            <div className="text-sm font-black text-white mt-1">{handoffContext.trackTitle || 'Untitled visual project'}</div>
+            <div className="text-xs text-slate-500 mt-1">Song context and visual direction were carried into this workspace.</div>
+          </div>
+          <button
+            onClick={() => {
+              sessionStorage.removeItem('sf_visual_brief');
+              setHandoffContext(null);
+            }}
+            className="px-3 py-2 rounded-xl border border-slate-800 text-[9px] font-black uppercase tracking-widest text-slate-400"
+          >
+            Clear Handoff
+          </button>
+        </div>
+      )}
+
       <ArtworkGenerator />
+
+      <div className="rounded-[2rem] border border-fuchsia-500/20 bg-slate-950 p-6 md:p-8">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-5">
+          <div>
+            <div className="flex items-center gap-2 text-fuchsia-300 text-[9px] font-black uppercase tracking-[0.22em]">
+              <Play className="w-4 h-4" /> Generate Inside Sound Merge
+            </div>
+            <h2 className="text-2xl font-black text-white mt-2">Higgsfield API Scene</h2>
+            <p className="text-sm text-slate-500 mt-2 max-w-2xl">
+              This route uses your personal Higgsfield Key ID/Secret when connected; otherwise it falls back to Sound Merge credentials.
+            </p>
+          </div>
+          <div className={`px-3 py-2 rounded-xl border text-[9px] font-black uppercase tracking-widest flex items-center gap-2 ${byokActive ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-slate-800 bg-slate-900 text-slate-500'}`}>
+            <KeyRound className="w-4 h-4" />
+            {byokActive ? 'Using My Higgsfield Key' : 'Sound Merge Fallback'}
+          </div>
+        </div>
+
+        <div className="grid lg:grid-cols-[1fr_360px] gap-5 mt-5">
+          <div className="space-y-3">
+            <textarea
+              value={goal}
+              onChange={e => setGoal(e.target.value)}
+              placeholder="Describe one clean scene to generate..."
+              className="w-full min-h-[150px] rounded-2xl border border-slate-800 bg-slate-900 text-white p-4 text-sm outline-none focus:border-fuchsia-500/50"
+            />
+            <div className="flex flex-wrap gap-2">
+              <select value={duration} onChange={e => setDuration(Number(e.target.value))} className="rounded-xl bg-slate-900 border border-slate-800 px-3 py-2.5 text-xs text-white">
+                <option value={5}>5 sec</option>
+                <option value={10}>10 sec</option>
+                <option value={15}>15 sec</option>
+              </select>
+              <select value={aspectRatio} onChange={e => setAspectRatio(e.target.value as any)} className="rounded-xl bg-slate-900 border border-slate-800 px-3 py-2.5 text-xs text-white">
+                <option value="16:9">16:9</option>
+                <option value="9:16">9:16</option>
+                <option value="1:1">1:1</option>
+              </select>
+              <button
+                onClick={generateInApp}
+                disabled={isGenerating || !goal.trim()}
+                className="flex-1 min-w-[220px] rounded-xl bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-4 py-2.5 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 disabled:opacity-40"
+              >
+                {isGenerating ? <><Loader2 className="w-4 h-4 animate-spin" /> {videoJob?.status || 'Submitting'}</> : <><Wand2 className="w-4 h-4" /> Generate Scene</>}
+              </button>
+            </div>
+            {!byokActive && (
+              <button
+                onClick={() => window.dispatchEvent(new CustomEvent('sf-navigate', { detail: { view: 'integrations' } }))}
+                className="text-[9px] font-black uppercase tracking-widest text-cyan-400 hover:text-white flex items-center gap-2"
+              >
+                <KeyRound className="w-3.5 h-3.5" /> Add my Higgsfield key in Integration Center
+              </button>
+            )}
+          </div>
+
+          <div className="aspect-video lg:aspect-auto lg:min-h-[240px] rounded-2xl border border-slate-800 bg-black/40 overflow-hidden flex items-center justify-center">
+            {videoJob?.videoUrl ? (
+              <video src={videoJob.videoUrl} controls className="w-full h-full object-contain" />
+            ) : isGenerating ? (
+              <div className="text-center p-6">
+                <Loader2 className="w-8 h-8 animate-spin text-fuchsia-400 mx-auto" />
+                <div className="text-[10px] font-black uppercase tracking-widest text-white mt-3">{videoJob?.status || 'Submitting'}</div>
+                <div className="text-[10px] text-slate-600 mt-1">Request {videoJob?.requestId ? videoJob.requestId.slice(0, 8) : 'starting'}…</div>
+              </div>
+            ) : videoJob?.error ? (
+              <div className="text-center p-6 text-red-300"><AlertCircle className="w-7 h-7 mx-auto" /><div className="text-xs mt-2">{videoJob.error}</div></div>
+            ) : (
+              <div className="text-center p-6 text-slate-700">
+                <Video className="w-10 h-10 mx-auto" />
+                <div className="text-xs font-black uppercase tracking-widest mt-3">Generated scene preview</div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
       <div className="grid lg:grid-cols-3 gap-4">
         {MODES.map(mode => {
@@ -152,7 +316,7 @@ export const VisualStudio: React.FC = () => {
           <div className="flex items-center gap-2 text-violet-300 text-[9px] font-black uppercase tracking-[0.22em]">
             <Bot className="w-4 h-4" /> Agent Director
           </div>
-          <h2 className="text-2xl font-black text-white mt-2">Build the visual brief here. Execute in Higgsfield.</h2>
+          <h2 className="text-2xl font-black text-white mt-2">Direct it in Sound Merge or hand it to Higgsfield Web/MCP.</h2>
           <textarea
             value={goal}
             onChange={e => setGoal(e.target.value)}
