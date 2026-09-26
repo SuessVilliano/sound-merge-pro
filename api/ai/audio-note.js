@@ -1,4 +1,5 @@
 import { requireUser } from "../_lib/auth.js";
+import { getByokKey } from "../_lib/byok.js";
 
 const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
 
@@ -12,8 +13,9 @@ export default async function handler(req, res) {
   const user = await requireUser(req, res);
   if (!user) return;
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: "Gemini audio understanding is not configured" });
+  const byokKey = getByokKey(req);
+  const apiKey = byokKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: "Gemini audio understanding is not configured. Add your Gemini key in Integration Center." });
 
   const { audioBase64 = "", mimeType = "audio/webm", context = "" } = req.body || {};
   if (!audioBase64) return res.status(400).json({ error: "audioBase64 is required" });
@@ -68,7 +70,7 @@ Extra context from the artist: ${context || "(none)"}
     }
 
     const text = data?.candidates?.[0]?.content?.parts?.map(p => p.text || "").join("") || "{}";
-    return res.status(200).json({ model: MODEL, analysis: parseJson(text) });
+    return res.status(200).json({ model: MODEL, credentialSource: byokKey ? "artist_byok" : "sound_merge", analysis: parseJson(text) });
   } catch (error) {
     console.error("[AudioNote]", error);
     return res.status(500).json({ error: error?.message || "Voice memo analysis unavailable" });
