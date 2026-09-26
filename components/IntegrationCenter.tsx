@@ -1,9 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Activity, CheckCircle2, AlertTriangle, RefreshCw, PlugZap, Server,
-  Bot, Music2, Database, Video, Mic2, Webhook, ShieldCheck, Circle
+  Bot, Music2, Database, Video, Mic2, Webhook, ShieldCheck, Circle, KeyRound, Trash2, Eye, EyeOff, Save
 } from 'lucide-react';
 import { integrationService, IntegrationHealth, IntegrationStatus } from '../services/integrationService';
+import { byokService, ByokProvider, ByokCredentials } from '../services/byokService';
 
 const categoryIcon: Record<string, any> = {
   ai: Bot,
@@ -17,6 +18,46 @@ const categoryIcon: Record<string, any> = {
   licensing: ShieldCheck
 };
 
+
+const byokProviders: Array<{
+  id: ByokProvider;
+  label: string;
+  description: string;
+  fields: Array<{ key: keyof ByokCredentials; label: string; placeholder: string; secret?: boolean }>;
+}> = [
+  {
+    id: 'gemini',
+    label: 'Gemini + Nano Banana',
+    description: 'Prompt Architect, AI staff, voice-note understanding and Nano Banana artwork.',
+    fields: [{ key: 'apiKey', label: 'Gemini API Key', placeholder: 'AIza…', secret: true }]
+  },
+  {
+    id: 'mureka',
+    label: 'Mureka',
+    description: 'Generate songs and instrumentals using your own Mureka account and credits.',
+    fields: [{ key: 'apiKey', label: 'Mureka API Key', placeholder: 'Your Mureka key', secret: true }]
+  },
+  {
+    id: 'suno',
+    label: 'Suno Platform',
+    description: 'Use your own Suno Platform account. Endpoint fields are optional when Sound Merge already has the adapter URLs configured.',
+    fields: [
+      { key: 'apiKey', label: 'Suno API Key', placeholder: 'Your Suno Platform key', secret: true },
+      { key: 'generateUrl', label: 'Generate Endpoint (optional)', placeholder: 'https://…suno.com/…' },
+      { key: 'statusUrl', label: 'Status Endpoint (optional)', placeholder: 'https://…suno.com/…/{id}' }
+    ]
+  },
+  {
+    id: 'higgsfield',
+    label: 'Higgsfield API',
+    description: 'Use your own Open Higgsfield API balance for embedded visual generation.',
+    fields: [
+      { key: 'keyId', label: 'Higgsfield Key ID', placeholder: 'Key ID', secret: true },
+      { key: 'keySecret', label: 'Higgsfield Key Secret', placeholder: 'Key Secret', secret: true }
+    ]
+  }
+];
+
 const modeLabel: Record<string, string> = {
   api: 'REAL API',
   mcp: 'MCP',
@@ -24,7 +65,6 @@ const modeLabel: Record<string, string> = {
   adapter_needed: 'ADAPTER NEEDED',
   not_configured: 'NOT CONFIGURED',
   server_proxy_needed: 'MIGRATION NEEDED',
-  retiring: 'RETIRING',
   retiring: 'RETIRING'
 };
 
@@ -40,6 +80,14 @@ export const IntegrationCenter: React.FC = () => {
   const [health, setHealth] = useState<IntegrationHealth | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [byokValues, setByokValues] = useState<Record<ByokProvider, ByokCredentials>>({
+    gemini: {},
+    mureka: {},
+    suno: {},
+    higgsfield: {}
+  });
+  const [showSecrets, setShowSecrets] = useState<Record<string, boolean>>({});
+  const [byokVersion, setByokVersion] = useState(0);
 
   const load = async () => {
     setLoading(true);
@@ -53,7 +101,37 @@ export const IntegrationCenter: React.FC = () => {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    const sync = () => {
+      setByokValues({
+        gemini: byokService.get('gemini') || {},
+        mureka: byokService.get('mureka') || {},
+        suno: byokService.get('suno') || {},
+        higgsfield: byokService.get('higgsfield') || {}
+      });
+      setByokVersion(v => v + 1);
+    };
+    sync();
+    window.addEventListener('sm-byok-updated', sync);
+    return () => window.removeEventListener('sm-byok-updated', sync);
+  }, []);
+
+  const saveByok = (provider: ByokProvider) => {
+    byokService.save(provider, byokValues[provider]);
+    window.dispatchEvent(new CustomEvent('sf-notification', {
+      detail: {
+        title: 'Personal API Key Ready',
+        message: `${byokProviders.find(p => p.id === provider)?.label || provider} will now prefer your credentials for this browser session.`,
+        type: 'success'
+      }
+    }));
+  };
+
+  const clearByok = (provider: ByokProvider) => {
+    byokService.clear(provider);
+    setByokValues(prev => ({ ...prev, [provider]: {} }));
+  };
 
   const summary = useMemo(() => {
     const providers = health?.providers || [];
@@ -97,6 +175,88 @@ export const IntegrationCenter: React.FC = () => {
               <div className="text-[9px] uppercase tracking-widest font-black text-slate-500">{label}</div>
             </div>
           ))}
+        </div>
+      </div>
+
+      <div className="rounded-[2rem] border border-cyan-500/20 bg-cyan-500/5 p-6 md:p-8">
+        <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-2 text-cyan-300 text-[9px] font-black uppercase tracking-[0.22em]">
+              <KeyRound className="w-4 h-4" /> Bring Your Own Key
+            </div>
+            <h2 className="text-2xl md:text-3xl font-black text-white mt-2">Use your provider accounts immediately.</h2>
+            <p className="text-sm text-slate-400 mt-2 max-w-3xl leading-relaxed">
+              Personal credentials override Sound Merge credentials for that provider. They are kept in this browser session only, sent to Sound Merge over the authenticated request, used transiently server-side, and are not written into your catalog or Firestore profile.
+            </p>
+          </div>
+          <div className="text-[9px] font-black uppercase tracking-widest text-cyan-300 border border-cyan-500/20 bg-slate-950 px-3 py-2 rounded-xl">
+            Session-scoped • Clear anytime
+          </div>
+        </div>
+
+        <div className="grid xl:grid-cols-2 gap-4 mt-6">
+          {byokProviders.map(provider => {
+            const active = byokService.has(provider.id);
+            const values = byokValues[provider.id] || {};
+            return (
+              <div key={provider.id} className={`rounded-2xl border p-5 ${active ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-slate-800 bg-slate-950/80'}`}>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h3 className="text-sm font-black text-white">{provider.label}</h3>
+                    <p className="text-xs text-slate-500 mt-1 leading-relaxed">{provider.description}</p>
+                  </div>
+                  <span className={`text-[8px] font-black uppercase tracking-widest px-2 py-1 rounded-full border ${active ? 'text-emerald-300 border-emerald-500/30 bg-emerald-500/10' : 'text-slate-500 border-slate-700'}`}>
+                    {active ? `Using My Key • ${byokService.masked(provider.id)}` : 'Sound Merge / Not Set'}
+                  </span>
+                </div>
+
+                <div className="space-y-3 mt-4">
+                  {provider.fields.map(field => {
+                    const secretId = `${provider.id}:${String(field.key)}`;
+                    const visible = showSecrets[secretId];
+                    return (
+                      <div key={String(field.key)}>
+                        <label className="block text-[9px] font-black uppercase tracking-widest text-slate-600 mb-1.5">{field.label}</label>
+                        <div className="relative">
+                          <input
+                            type={field.secret && !visible ? 'password' : 'text'}
+                            value={String(values[field.key] || '')}
+                            onChange={e => setByokValues(prev => ({
+                              ...prev,
+                              [provider.id]: { ...prev[provider.id], [field.key]: e.target.value }
+                            }))}
+                            placeholder={field.placeholder}
+                            autoComplete="off"
+                            className="w-full rounded-xl bg-slate-900 border border-slate-800 px-3 py-2.5 pr-10 text-xs text-white outline-none focus:border-cyan-500"
+                          />
+                          {field.secret && (
+                            <button
+                              type="button"
+                              onClick={() => setShowSecrets(prev => ({ ...prev, [secretId]: !visible }))}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-600 hover:text-white"
+                            >
+                              {visible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex gap-2 mt-4">
+                  <button onClick={() => saveByok(provider.id)} className="flex-1 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2">
+                    <Save className="w-3.5 h-3.5" /> Use My Key
+                  </button>
+                  {active && (
+                    <button onClick={() => clearByok(provider.id)} className="px-3 py-2.5 rounded-xl border border-red-500/20 bg-red-500/5 text-red-300">
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
 
