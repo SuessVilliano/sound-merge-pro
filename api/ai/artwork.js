@@ -1,4 +1,5 @@
 import { requireUser } from "../_lib/auth.js";
+import { getByokKey } from "../_lib/byok.js";
 
 const MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image";
 
@@ -31,8 +32,9 @@ export default async function handler(req, res) {
   const user = await requireUser(req, res);
   if (!user) return;
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return res.status(503).json({ error: "Nano Banana artwork is not configured" });
+  const byokKey = getByokKey(req);
+  const apiKey = byokKey || process.env.GEMINI_API_KEY;
+  if (!apiKey) return res.status(503).json({ error: "Nano Banana is not configured. Add your Gemini key in Integration Center." });
 
   const {
     prompt = "",
@@ -94,6 +96,7 @@ export default async function handler(req, res) {
 
     return res.status(200).json({
       model: MODEL,
+      credentialSource: byokKey ? "artist_byok" : "sound_merge",
       mimeType: image.mimeType || "image/png",
       dataUrl: `data:${image.mimeType || "image/png"};base64,${image.data}`
     });
