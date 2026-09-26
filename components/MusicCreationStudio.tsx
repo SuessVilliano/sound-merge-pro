@@ -27,6 +27,7 @@ type StudioTab = 'forge' | 'separator' | 'cinema' | 'history';
 
 const MODEL_VERSIONS: { label: string; value: MusicEngine }[] = [
     { label: 'Suno — Official API', value: 'suno' },
+    { label: 'Eleven Music v2.5 — Official API', value: 'elevenlabs' },
     { label: 'Mureka — Official API', value: 'mureka' },
     { label: 'Udio — Browser Agent', value: 'udio' },
     { label: 'Studio — Local Preview', value: 'studio' }
