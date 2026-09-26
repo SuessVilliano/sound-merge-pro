@@ -130,7 +130,7 @@ export const AllToolsView: React.FC<AllToolsViewProps> = ({ stats, onNavigate, o
                                                 </button>
                                             )}
                                             {!locked && tool.ai && (
-                                                <span className="text-[8px] font-black uppercase text-purple-500 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">AI Synchronized</span>
+                                                <span className="text-[8px] font-black uppercase text-purple-500 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">AI Available</span>
                                             )}
                                         </div>
                                     </div>
@@ -149,8 +149,8 @@ function getToolDescription(view: string): string {
     const desc: Record<string, string> = {
         [VIEWS.STUDIO]: "Idea-to-song workspace for prompts, lyrics, AI/human creation and real generation providers.",
         [VIEWS.VISUAL_STUDIO]: "Higgsfield-first visual workflow for consistent artist identity, music videos, lip sync and performance.",
-        [VIEWS.MASTERING]: "Institutional-grade AI audio post-production and LUFS optimization for global stores.",
-        [VIEWS.MY_MUSIC]: "Your private ledger of all forged assets, masters, and on-chain registrations.",
+        [VIEWS.MASTERING]: "Audio post-production and mastering workspace for release-ready files.",
+        [VIEWS.MY_MUSIC]: "Your music library for uploaded, imported and generated masters.",
         [VIEWS.CRM]: "Automated fan registry and unified messaging node for SMS, Email, and WhatsApp.",
         // Fixed: Renamed VIEWS.FUNDING to VIEWS.ADVANCES
         [VIEWS.ADVANCES]: "Access non-recourse capital advances based on your verified catalog performance.",
