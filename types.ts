@@ -119,7 +119,8 @@ export interface BriefArtifacts {
 
 export interface DistributionTrack {
   id: string;
-  asset_id: string; 
+  asset_id: string;
+  audioUrl?: string;
   title: string;
   isInstrumental: boolean;
   isExplicit: boolean;
@@ -423,6 +424,10 @@ export interface Track {
   audioUrl: string;
   videoUrl?: string;
   duration: string;
+  source?: 'uploaded' | 'catalog_import' | 'generated' | string;
+  storagePath?: string;
+  releaseTitle?: string;
+  originalReleaseDate?: string;
   plays: number;
   earnings: number;
   bpm?: number;
