@@ -1,13 +1,14 @@
 import { GeneratedTrack, generateFallbackAudioUrl } from './audioService';
 import { auth } from './firebase';
 import { byokService } from './byokService';
+import { assetStorageService } from './assetStorageService';
 
 /**
  * Sound Merge music generation gateway.
  * External providers are called only through authenticated server routes so provider
  * credentials never ship to the browser.
  */
-export type MusicEngine = 'suno' | 'mureka' | 'udio' | 'studio';
+export type MusicEngine = 'suno' | 'mureka' | 'elevenlabs' | 'udio' | 'studio';
 
 export interface ForgeOptions {
     engine: MusicEngine;
@@ -81,7 +82,11 @@ export const musicGenService = {
         }
 
         if (options.engine === 'udio') {
-            throw new Error('Udio does not currently expose a public API. Use a browser-agent workflow for Udio, or select Suno/Mureka for API generation.');
+            throw new Error('Udio does not currently expose a public API. Use a browser-agent workflow for Udio, or select Suno/Mureka/ElevenLabs for API generation.');
+        }
+
+        if (options.engine === 'elevenlabs') {
+            return this.generateElevenLabs(options);
         }
 
         const headers = await getAuthHeaders(options.engine);
@@ -111,6 +116,60 @@ export const musicGenService = {
         }
 
         return this.pollUntilComplete(initial as ProviderJob, options, headers);
+    },
+
+    async generateElevenLabs(options: ForgeOptions): Promise<GeneratedTrack> {
+        const user = auth.currentUser;
+        if (!user) throw new Error('Sign in to generate music.');
+
+        const token = await user.getIdToken();
+        const response = await fetch('/api/music/elevenlabs', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                ...byokService.headers('elevenlabs')
+            },
+            body: JSON.stringify({
+                prompt: options.prompt,
+                lyrics: options.lyrics || '',
+                instrumental: Boolean(options.isInstrumental),
+                title: options.title || '',
+                durationDesired: options.durationDesired || 60
+            })
+        });
+
+        if (!response.ok) {
+            let message = 'Eleven Music generation failed.';
+            try {
+                const data = await response.json();
+                message = data?.error || message;
+            } catch {}
+            throw new Error(message);
+        }
+
+        const blob = await response.blob();
+        const songId = response.headers.get('X-SM-Song-Id') || `eleven_${Date.now()}`;
+        const model = response.headers.get('X-SM-Model') || 'music_v2_5';
+        const credentialSource = response.headers.get('X-SM-Credential-Source') || 'sound_merge';
+
+        const uploaded = await assetStorageService.uploadFile({
+            userId: user.uid,
+            file: blob,
+            filename: `${(options.title || songId).replace(/[^a-z0-9-_]+/gi, '-')}.mp3`,
+            folder: 'masters'
+        });
+
+        return {
+            id: songId,
+            title: options.title || options.prompt.substring(0, 40) || 'Eleven Music Track',
+            duration: formatDuration(options.durationDesired || 60, options.durationDesired || 60),
+            status: 'completed',
+            audioUrl: uploaded.url,
+            imageUrl: `https://ui-avatars.com/api/?name=${encodeURIComponent(options.title || 'Eleven Music')}&background=111827&color=a78bfa&size=600`,
+            tags: ['elevenlabs', model, credentialSource, ...(options.styleTags || []).slice(0, 3)],
+            type: 'song'
+        };
     },
 
     async pollUntilComplete(initial: ProviderJob, options: ForgeOptions, headers: Record<string, string>): Promise<GeneratedTrack> {
