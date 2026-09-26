@@ -21,12 +21,7 @@ interface ArtistProfileProps {
   onBack?: () => void;
 }
 
-const MOCK_PHOTOS = [
-    'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?auto=format&fit=crop&w=800&q=80',
-    'https://images.unsplash.com/photo-1514525253440-b393452e8d26?auto=format&fit=crop&w=400&q=80',
-    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?auto=format&fit=crop&w=800&q=80'
-];
+const PROFILE_PHOTOS: string[] = [];
 
 export const ArtistProfile: React.FC<ArtistProfileProps> = ({ user, onNavigate, isPublic = false, onBack }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -52,10 +47,10 @@ export const ArtistProfile: React.FC<ArtistProfileProps> = ({ user, onNavigate, 
   
   const [profile, setProfile] = useState({
     stageName: user?.displayName || 'New Artist',
-    bio: user?.bio || 'Electronic producer and vocalist blurring the lines between analog warmth and digital precision.',
-    genre: 'Indie Pop / Electronic',
-    location: user?.location || 'Los Angeles, CA',
-    managementEmail: 'mgmt@soundmerge.club',
+    bio: user?.bio || '',
+    genre: '',
+    location: user?.location || '',
+    managementEmail: user?.email || '',
   });
 
   const [socials, setSocials] = useState({
@@ -123,7 +118,7 @@ export const ArtistProfile: React.FC<ArtistProfileProps> = ({ user, onNavigate, 
         });
         setIsEditing(false);
         window.dispatchEvent(new CustomEvent('sf-notification', { 
-            detail: { title: 'Site Published', message: 'Your professional profile has been updated on the ledger.', type: 'success' } 
+            detail: { title: 'Profile Saved', message: 'Your professional profile has been saved.', type: 'success' } 
         }));
     } catch (e) {
         alert("Failed to save changes");
@@ -218,7 +213,7 @@ export const ArtistProfile: React.FC<ArtistProfileProps> = ({ user, onNavigate, 
                     <h2 className="text-xl font-black text-slate-900 dark:text-white flex items-center gap-2 uppercase tracking-tighter italic">
                         <Palette className="w-5 h-5 text-indigo-500" /> Site Builder
                     </h2>
-                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Institutional Node Editing</p>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">Profile & Brand Editing</p>
                   </div>
                   <button onClick={() => setIsEditing(false)} className="text-slate-400 hover:text-red-500 transition-colors p-2 bg-slate-100 dark:bg-slate-800 rounded-full"><X className="w-5 h-5" /></button>
               </div>
@@ -447,7 +442,7 @@ export const ArtistProfile: React.FC<ArtistProfileProps> = ({ user, onNavigate, 
                   <section>
                       <h3 className="text-sm font-black opacity-50 uppercase tracking-[0.3em] mb-8 border-b border-current pb-2 w-fit">Visual Gallery</h3>
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 h-96">
-                          {MOCK_PHOTOS.map((url, i) => (
+                          {PROFILE_PHOTOS.map((url, i) => (
                               <div key={i} className={`rounded-2xl overflow-hidden relative group ${i === 0 ? 'col-span-2 row-span-2' : ''}`}>
                                   <img src={url} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                                   <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors"></div>
