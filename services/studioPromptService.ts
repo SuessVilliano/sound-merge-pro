@@ -1,5 +1,6 @@
 import { auth } from './firebase';
 import { MusicEngine } from './musicGenService';
+import { byokService } from './byokService';
 
 export interface StudioAudioNoteAnalysis {
   transcript: string;
@@ -26,7 +27,8 @@ const authHeaders = async () => {
   if (!token) throw new Error('Sign in to use Prompt Architect.');
   return {
     'Authorization': `Bearer ${token}`,
-    'Content-Type': 'application/json'
+    'Content-Type': 'application/json',
+    ...byokService.headers('gemini')
   };
 };
 
