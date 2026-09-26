@@ -1,4 +1,5 @@
 import { requireUser } from "../_lib/auth.js";
+import { getByokKey, getSunoByokUrls } from "../_lib/byok.js";
 
 const normalizeMureka = (data, taskType) => {
   const choice = Array.isArray(data?.choices) ? data.choices[0] : null;
@@ -41,8 +42,9 @@ export default async function handler(req, res) {
   }
 
   if (provider === "mureka") {
-    const apiKey = process.env.MUREKA_API_KEY;
-    if (!apiKey) return res.status(503).json({ error: "Mureka is not configured" });
+    const byokKey = getByokKey(req);
+    const apiKey = byokKey || process.env.MUREKA_API_KEY;
+    if (!apiKey) return res.status(503).json({ error: "Mureka is not configured. Add your Mureka key in Integration Center." });
 
     const taskType = instrumental ? "instrumental" : "song";
     if (!instrumental && !lyrics.trim()) {
@@ -87,13 +89,15 @@ export default async function handler(req, res) {
   }
 
   if (provider === "suno") {
-    const apiKey = process.env.SUNO_API_KEY;
-    const generateUrl = process.env.SUNO_GENERATE_URL;
+    const byokKey = getByokKey(req);
+    const byokUrls = getSunoByokUrls(req);
+    const apiKey = byokKey || process.env.SUNO_API_KEY;
+    const generateUrl = byokUrls.generateUrl || process.env.SUNO_GENERATE_URL;
 
-    if (!apiKey) return res.status(503).json({ error: "Suno API is not configured. Add SUNO_API_KEY from Suno Platform." });
+    if (!apiKey) return res.status(503).json({ error: "Suno is not configured. Add your Suno Platform API key in Integration Center." });
     if (!generateUrl) {
       return res.status(503).json({
-        error: "Suno API key is present, but the Sound Merge adapter still needs SUNO_GENERATE_URL from your Suno Platform API documentation.",
+        error: "A Suno API key is present, but no generation endpoint is configured. Add the endpoint from your Suno Platform account in BYOK settings or configure Sound Merge.",
         mode: "adapter_needed"
       });
     }
