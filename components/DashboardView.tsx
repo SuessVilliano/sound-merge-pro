@@ -47,7 +47,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {isNodeLive ? (
                 <div className="bg-green-500/10 border border-green-500/20 rounded-full px-5 py-2 flex items-center gap-2 shadow-[0_0_15px_rgba(34,197,94,0.1)] group">
                     <Server className="w-3.5 h-3.5 text-green-500" />
-                    <span className="text-[10px] font-black text-green-600 dark:text-green-400 uppercase tracking-widest">Institutional Ledger Synchronized</span>
+                    <span className="text-[10px] font-black text-green-600 dark:text-green-400 uppercase tracking-widest">Sound Merge Data Connected</span>
                     <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse ml-1"></div>
                 </div>
             ) : (
@@ -112,7 +112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div className="p-3 bg-cyan-500/10 rounded-2xl group-hover:scale-110 transition-transform">
                           <ShieldCheck className="w-6 h-6 text-cyan-500" />
                       </div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Security Node</span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Catalog Identity</span>
                   </div>
                   <div>
                       <h3 className="font-bold dark:text-white uppercase tracking-tight">Codes + Rights</h3>
