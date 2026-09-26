@@ -1,5 +1,6 @@
 import { Opportunity, Stats, AiStaffMember, User, StaffProposal, SyncBrief, BriefArtifacts, StudioSuggestion, DistributionSubmission } from "../types";
 import { auth } from "./firebase";
+import { byokService } from "./byokService";
 
 export interface ChatContext {
   currentView: string;
@@ -18,7 +19,8 @@ const aiTask = async <T = any>(task: string, payload: any): Promise<T> => {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      ...byokService.headers('gemini')
     },
     body: JSON.stringify({ task, payload })
   });
