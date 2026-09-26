@@ -1,6 +1,6 @@
 
 import React, { useState, useRef } from 'react';
-import { X, Upload, Music, CheckCircle2, Loader2, FileAudio, Tag, Video, Link, Plus, Trash2, Users, Sliders, ChevronDown, ChevronUp, CloudUpload } from 'lucide-react';
+import { X, Upload, Music, CheckCircle2, Loader2, FileAudio, Tag, Video, Link, Plus, Trash2, Users, Sliders, ChevronDown, ChevronUp } from 'lucide-react';
 import { User, Track, Contributor } from '../types';
 import { dataService } from '../services/dataService';
 import { assetStorageService } from '../services/assetStorageService';
@@ -320,7 +320,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, user 
 
                     <div className="p-5 rounded-[1.5rem] border border-cyan-500/20 bg-cyan-500/5">
                         <div className="flex items-start gap-3">
-                            <CloudUpload className="w-5 h-5 text-cyan-400 mt-0.5" />
+                            <Upload className="w-5 h-5 text-cyan-400 mt-0.5" />
                             <div>
                                 <h4 className="text-sm font-black uppercase tracking-tight text-cyan-300">Durable Catalog Storage</h4>
                                 <p className="text-xs text-slate-500 mt-1 leading-relaxed">
