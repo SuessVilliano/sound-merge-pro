@@ -1,10 +1,9 @@
 
 import React, { useState, useRef } from 'react';
-import { X, Upload, Music, CheckCircle2, Loader2, FileAudio, Tag, Shield, Database, Lock, Video, Link, Plus, Trash2, Users, Sliders, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, Upload, Music, CheckCircle2, Loader2, FileAudio, Tag, Video, Link, Plus, Trash2, Users, Sliders, ChevronDown, ChevronUp, CloudUpload } from 'lucide-react';
 import { User, Track, Contributor } from '../types';
 import { dataService } from '../services/dataService';
-import { lighthouseService } from '../services/lighthouseService';
-import { useWallet } from '../contexts/WalletContext';
+import { assetStorageService } from '../services/assetStorageService';
 
 interface UploadModalProps {
   isOpen: boolean;
@@ -19,7 +18,6 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, user 
   const [file, setFile] = useState<File | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const { walletAddress } = useWallet();
 
   // Core Metadata
   const [title, setTitle] = useState('');
@@ -41,10 +39,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, user 
       { id: '1', name: user.displayName, role: 'Songwriter' }
   ]);
   
-  // Blockchain State
-  const [registerOnChain, setRegisterOnChain] = useState(false);
   const [processingStatus, setProcessingStatus] = useState('Uploading...');
-  const [generatedCid, setGeneratedCid] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
 
   if (!isOpen) return null;
 
@@ -107,61 +103,57 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, user 
     setStep('processing');
 
     try {
-        let blockchainData = undefined;
-
-        if (registerOnChain) {
-            setProcessingStatus('Securing Identity & IP on Ledger...');
-            const address = walletAddress || "0xDemoWallet..." + Date.now();
-            const lhResponse = await lighthouseService.uploadEncrypted(file, address, "Copyright Registration");
-            
-            blockchainData = {
-                cid: lhResponse.Hash,
-                timestamp: new Date().toISOString(),
-                network: 'Filecoin' as const,
-                status: 'secured' as const
-            };
-            setGeneratedCid(lhResponse.Hash);
-        }
-
-        setProcessingStatus('Syncing Distribution Metadata...');
-        await new Promise(resolve => setTimeout(resolve, 1200));
-
         const isVideo = file.type.startsWith('video/');
+        setProcessingStatus('Uploading your original file...');
+        setUploadProgress(0);
+
+        const uploaded = await assetStorageService.uploadFile({
+            userId: user.uid,
+            file,
+            filename: file.name,
+            folder: isVideo ? 'videos' : 'masters',
+            onProgress: setUploadProgress
+        });
+
+        setProcessingStatus('Saving catalog metadata...');
 
         const newTrack: Track = {
-            id: `track_${Date.now()}`,
+            id: `track_${crypto.randomUUID()}`,
             title: title || 'Untitled Track',
-            artist: artist,
+            artist,
             bpm: parseInt(bpm) || 0,
             key: key || '-',
             mood_tags: genre ? [genre] : [],
-            duration: '3:30', 
+            duration: '',
             plays: 0,
             earnings: 0,
-            image: `https://images.unsplash.com/photo-1614613535308-eb5fbd3d2c17?w=500&auto=format`,
-            audioUrl: URL.createObjectURL(file), 
-            videoUrl: youtubeUrl || (isVideo ? URL.createObjectURL(file) : undefined),
+            image: '',
+            audioUrl: isVideo ? '' : uploaded.url,
+            videoUrl: youtubeUrl || (isVideo ? uploaded.url : undefined),
             licenseType: 'sync-ready',
             status: 'completed',
             type: isVideo ? 'vocal' : 'song',
             createdAt: new Date().toISOString(),
-            blockchainRegistration: blockchainData,
-            
-            // Re-introduced detailed metadata
-            isrc,
-            upc,
+            isrc: isrc || undefined,
+            upc: upc || undefined,
             recordLabel: label,
             isExplicit,
-            isInstrumental: !isVideo && file.type.startsWith('audio/'),
-            contributors: contributors,
-            genre: genre
+            isInstrumental: false,
+            contributors,
+            genre
         };
 
-        /* Cast newTrack to any to satisfy the GeneratedTrack type requirement in saveTrack (missing 'tags') */
-        await dataService.saveTrack(user.uid, newTrack as any);
+        await dataService.saveTrack(user.uid, {
+            ...(newTrack as any),
+            storagePath: uploaded.path,
+            source: 'uploaded'
+        });
         setStep('success');
-    } catch (error) {
+    } catch (error: any) {
         console.error("Upload failed", error);
+        window.dispatchEvent(new CustomEvent('sf-notification', {
+          detail: { title: 'Upload Failed', message: error?.message || 'Could not save this master.', type: 'error' }
+        }));
         setStep('metadata');
     }
   };
@@ -181,7 +173,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, user 
         {/* Header */}
         <div className="p-6 border-b border-slate-800 flex justify-between items-center bg-slate-950">
            <h2 className="text-xl font-black text-white flex items-center gap-3 uppercase tracking-tighter italic">
-               <Upload className="w-5 h-5 text-cyan-400" /> Intake Terminal
+               <Upload className="w-5 h-5 text-cyan-400" /> Upload Music
            </h2>
            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-500 hover:text-white transition-colors">
                <X className="w-6 h-6" />
@@ -201,8 +193,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, user 
                     <div className="w-20 h-20 bg-slate-900 rounded-full flex items-center justify-center mb-6 shadow-xl border border-slate-800">
                         <Upload className="w-10 h-10 text-slate-500 animate-pulse" />
                     </div>
-                    <p className="text-white font-black text-xl mb-1 uppercase tracking-tighter">Inject Sonic Assets</p>
-                    <p className="text-slate-500 text-xs mb-8 font-medium">PCM WAV (24-bit preferred) or MP4 Cinema Assets</p>
+                    <p className="text-white font-black text-xl mb-1 uppercase tracking-tighter">Add Your Master</p>
+                    <p className="text-slate-500 text-xs mb-8 font-medium">Upload WAV, MP3, M4A, FLAC, or video. AI generation is not required.</p>
                     <button 
                         onClick={() => inputRef.current?.click()}
                         className="bg-white hover:bg-slate-200 text-slate-950 px-10 py-3 rounded-full font-black text-[10px] uppercase tracking-widest transition-all shadow-xl"
@@ -223,7 +215,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, user 
                         </div>
                         <div className="flex-1 min-w-0">
                             <p className="text-white text-sm font-black truncate uppercase tracking-tight">{file?.name}</p>
-                            <p className="text-slate-600 text-[10px] font-mono uppercase">{(file!.size / 1024 / 1024).toFixed(2)} MB • READY FOR INDEXING</p>
+                            <p className="text-slate-600 text-[10px] font-mono uppercase">{(file!.size / 1024 / 1024).toFixed(2)} MB • READY TO SAVE</p>
                         </div>
                         <button onClick={() => setStep('upload')} className="text-[10px] font-black uppercase text-red-500 hover:text-red-400 transition-colors tracking-widest">Change</button>
                     </div>
@@ -326,22 +318,13 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, user 
                         )}
                     </div>
 
-                    {/* Blockchain & Security */}
-                    <div 
-                        className={`p-6 rounded-[2rem] border transition-all cursor-pointer relative overflow-hidden ${registerOnChain ? 'bg-indigo-600/10 border-indigo-500 shadow-lg' : 'bg-slate-950 border-slate-800 hover:border-slate-700'}`}
-                        onClick={() => setRegisterOnChain(!registerOnChain)}
-                    >
-                        {registerOnChain && <div className="absolute top-0 right-0 p-4 opacity-10"><Shield className="w-16 h-16 text-indigo-400" /></div>}
-                        <div className="flex items-start gap-4">
-                            <div className={`w-6 h-6 rounded-full border flex items-center justify-center shrink-0 mt-0.5 ${registerOnChain ? 'bg-indigo-500 border-indigo-400' : 'bg-slate-900 border-slate-700'}`}>
-                                {registerOnChain && <CheckCircle2 className="w-4 h-4 text-white" />}
-                            </div>
+                    <div className="p-5 rounded-[1.5rem] border border-cyan-500/20 bg-cyan-500/5">
+                        <div className="flex items-start gap-3">
+                            <CloudUpload className="w-5 h-5 text-cyan-400 mt-0.5" />
                             <div>
-                                <h4 className={`text-sm font-black uppercase tracking-tight ${registerOnChain ? 'text-indigo-400' : 'text-slate-300'}`}>
-                                    LIV8 AI Rights Verification (Solana/Filecoin)
-                                </h4>
-                                <p className="text-xs text-slate-500 mt-1 leading-relaxed max-w-md">
-                                    Anchor this asset to the Sound Merge Ledger. Generates an encrypted copyright record for institutional licensing.
+                                <h4 className="text-sm font-black uppercase tracking-tight text-cyan-300">Durable Catalog Storage</h4>
+                                <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                                    Your original file is stored in your Sound Merge account. Rights registration, blockchain, distributor submission and collection are separate rails and are never implied by an upload.
                                 </p>
                             </div>
                         </div>
@@ -351,8 +334,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, user 
                         onClick={handleSubmit}
                         className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-black py-4 rounded-2xl transition-all shadow-xl shadow-cyan-600/20 flex items-center justify-center gap-2 uppercase tracking-widest text-xs"
                     >
-                        {registerOnChain ? <Lock className="w-4 h-4" /> : null}
-                        {registerOnChain ? 'Authorize Global Deployment' : 'Finalize Indexing'}
+                        Save to My Catalog
                     </button>
                 </div>
             )}
@@ -366,7 +348,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, user 
                         </div>
                     </div>
                     <h3 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter italic animate-pulse">{processingStatus}</h3>
-                    <p className="text-slate-500 text-sm font-medium">Verifying compliance with institutional metadata standards...</p>
+                    <p className="text-slate-500 text-sm font-medium">{uploadProgress > 0 && uploadProgress < 100 ? `${uploadProgress}% uploaded` : 'Saving a durable catalog record...'}</p>
                 </div>
             )}
 
@@ -375,19 +357,8 @@ export const UploadModal: React.FC<UploadModalProps> = ({ isOpen, onClose, user 
                     <div className="w-20 h-20 bg-green-500/10 rounded-full flex items-center justify-center mb-6 text-green-500 border border-green-500/20 shadow-[0_0_50px_rgba(34,197,94,0.1)]">
                         <CheckCircle2 className="w-12 h-12" />
                     </div>
-                    <h3 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter">Asset Synchronized</h3>
-                    <p className="text-slate-400 text-sm mb-10 font-medium">Your media has been verified and added to the Institutional Hub.</p>
-                    
-                    {generatedCid && (
-                        <div className="mb-10 p-5 bg-slate-950 rounded-2xl border border-slate-800 w-full shadow-inner">
-                            <p className="text-[10px] text-slate-600 uppercase font-black mb-2 flex items-center justify-center gap-1 tracking-[0.2em]">
-                                <Database className="w-3 h-3" /> Blockchain Rights Proof
-                            </p>
-                            <code className="text-xs text-indigo-400 font-mono break-all leading-relaxed">
-                                {generatedCid}
-                            </code>
-                        </div>
-                    )}
+                    <h3 className="text-3xl font-black text-white mb-2 uppercase tracking-tighter">Saved to My Catalog</h3>
+                    <p className="text-slate-400 text-sm mb-10 font-medium">Your original file and metadata are saved in Sound Merge.</p>
 
                     <button 
                         onClick={reset}
