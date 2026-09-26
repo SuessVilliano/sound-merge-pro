@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 /* Added Loader2 to the lucide-react imports */
-import { Play, Search, Plus, MoreHorizontal, Clock, Download, Trash2, Music, Heart, Filter, Loader2 } from 'lucide-react';
+import { Play, Search, Plus, MoreHorizontal, Clock, Download, Trash2, Music, Heart, Filter, Loader2, Library } from 'lucide-react';
 import { Track, User } from '../types';
 import { dataService } from '../services/dataService';
 import { usePlayer } from '../contexts/PlayerContext';
+import { CatalogImportModal } from './CatalogImportModal';
 
 interface MyMusicProps {
   user: User;
@@ -16,6 +17,7 @@ export const MyMusic: React.FC<MyMusicProps> = ({ user, setShowUploadModal }) =>
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [showCatalogImport, setShowCatalogImport] = useState(false);
   const { playTrack } = usePlayer();
 
   // Favorites State with persistence
@@ -70,25 +72,6 @@ export const MyMusic: React.FC<MyMusicProps> = ({ user, setShowUploadModal }) =>
     return () => unsubscribe();
   }, [user]);
 
-  const handleSaveDemo = async () => {
-      const newTrack = {
-          id: `gen_${Date.now()}`,
-          title: `Demo Creation ${tracks.length + 1}`,
-          artist: user.displayName || 'Artist',
-          bpm: 128,
-          key: 'Cm',
-          mood_tags: ['Demo', 'AI'],
-          duration: '2:45',
-          plays: 0,
-          earnings: 0,
-          image: `https://picsum.photos/300/300?random=${Date.now()}`,
-          audioUrl: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3',
-          type: 'song',
-          createdAt: new Date().toISOString(),
-          status: 'completed'
-      };
-      await dataService.saveTrack(user.uid, newTrack as any);
-  };
 
   const handleDelete = async (id: string) => {
       if(confirm('Are you sure you want to delete this track?')) {
@@ -109,8 +92,13 @@ export const MyMusic: React.FC<MyMusicProps> = ({ user, setShowUploadModal }) =>
       });
   };
 
-  const filteredTracks = tracks.filter(t => 
-      (filter === 'all' || (filter === 'generated' && t.type === 'song') || (filter === 'uploaded' && !t.type)) &&
+  const filteredTracks = tracks.filter(t =>
+      (
+        filter === 'all' ||
+        (filter === 'generated' && t.source !== 'uploaded' && t.source !== 'catalog_import') ||
+        (filter === 'uploaded' && t.source === 'uploaded') ||
+        (filter === 'catalog' && t.source === 'catalog_import')
+      ) &&
       (t.title?.toLowerCase().includes(search.toLowerCase()))
   );
 
@@ -119,9 +107,15 @@ export const MyMusic: React.FC<MyMusicProps> = ({ user, setShowUploadModal }) =>
         <div className="flex justify-between items-center">
             <div>
                 <h1 className="text-2xl font-bold text-slate-900 dark:text-white uppercase tracking-tight">My Library</h1>
-                <p className="text-slate-500 dark:text-slate-400 text-sm">Manage your uploads, AI generations, and masters.</p>
+                <p className="text-slate-500 dark:text-slate-400 text-sm">Manage music you uploaded, generated, imported from an older catalog, or created elsewhere.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
+                <button
+                    onClick={() => setShowCatalogImport(true)}
+                    className="bg-slate-900 dark:bg-white text-white dark:text-slate-950 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-colors"
+                >
+                    <Library className="w-4 h-4" /> Import Existing Release
+                </button>
                 <button 
                     onClick={() => setShowFilters(!showFilters)}
                     className={`px-4 py-2 border rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${showFilters ? 'bg-cyan-500/10 border-cyan-500 text-cyan-600 dark:text-cyan-400' : 'border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}
@@ -141,7 +135,7 @@ export const MyMusic: React.FC<MyMusicProps> = ({ user, setShowUploadModal }) =>
         {showFilters && (
             <div className="flex flex-col sm:flex-row justify-between gap-4 bg-white dark:bg-slate-850 p-4 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm animate-in slide-in-from-top-4">
                 <div className="flex gap-2 overflow-x-auto">
-                    {['all', 'uploaded', 'generated'].map(f => (
+                    {['all', 'catalog', 'uploaded', 'generated'].map(f => (
                         <button
                             key={f}
                             onClick={() => setFilter(f)}
@@ -179,7 +173,7 @@ export const MyMusic: React.FC<MyMusicProps> = ({ user, setShowUploadModal }) =>
                 <div className="flex flex-col items-center justify-center h-96 text-slate-500">
                     <Music className="w-16 h-16 mb-4 opacity-20" />
                     <p className="text-lg font-bold text-slate-400 uppercase tracking-tighter">Library Empty</p>
-                    <p className="text-sm mt-1">Upload a track or generate one in AI Studio.</p>
+                    <p className="text-sm mt-1">Upload one master, import an existing release, or create something new.</p>
                 </div>
             ) : (
                 <div className="overflow-x-auto">
@@ -205,7 +199,11 @@ export const MyMusic: React.FC<MyMusicProps> = ({ user, setShowUploadModal }) =>
                                     <td className="py-4">
                                         <div className="flex items-center gap-4">
                                             <div className="w-12 h-12 rounded-lg bg-slate-800 overflow-hidden shrink-0 relative group/img cursor-pointer" onClick={() => playTrack(track)}>
-                                                <img src={track.image || track.imageUrl} alt={track.title} className="w-full h-full object-cover" />
+                                                {(track.image || track.imageUrl) ? (
+                                                    <img src={track.image || track.imageUrl} alt={track.title} className="w-full h-full object-cover" />
+                                                ) : (
+                                                    <div className="w-full h-full flex items-center justify-center bg-slate-900"><Music className="w-5 h-5 text-slate-600" /></div>
+                                                )}
                                                 <div className="absolute inset-0 bg-black/40 hidden group-hover/img:flex items-center justify-center">
                                                     <Play className="w-6 h-6 text-white fill-white" />
                                                 </div>
@@ -273,6 +271,7 @@ export const MyMusic: React.FC<MyMusicProps> = ({ user, setShowUploadModal }) =>
                 </div>
             )}
         </div>
+        <CatalogImportModal isOpen={showCatalogImport} onClose={() => setShowCatalogImport(false)} user={user} />
     </div>
   );
 };
