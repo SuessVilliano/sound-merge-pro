@@ -1,8 +1,25 @@
 
 import { User } from '../types';
+import { auth } from './firebase';
 
-const PUSHLAP_API_KEY = process.env.PUSHLAP_API_KEY; 
 const AFFILIATE_DOMAIN = "https://soundmerge.club";
+
+const postAffiliateEvent = async (action: 'signup' | 'sale', payload: Record<string, any>) => {
+  const token = await auth.currentUser?.getIdToken();
+  if (!token) return;
+  const response = await fetch('/api/pushlap', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ action, payload })
+  });
+  if (!response.ok) {
+    const data = await response.json().catch(() => ({}));
+    throw new Error(data?.error || 'Affiliate tracking failed');
+  }
+};
 
 export const affiliateService = {
   
@@ -21,11 +38,6 @@ export const affiliateService = {
         return;
     }
 
-    if (!PUSHLAP_API_KEY) {
-        console.warn("PushLap API Key missing. Skipping signup tracking.");
-        return;
-    }
-
     console.log(`Tracking signup for affiliate: ${affiliateId}`);
 
     const body = {
@@ -37,23 +49,9 @@ export const affiliateService = {
       status: 'active', // Status of the referred user
     };
 
-    const options = {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PUSHLAP_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    };
-
     try {
-      const response = await fetch('https://www.pushlapgrowth.com/api/v1/referrals', options);
-      if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(`PushLap API Error (${response.status}): ${errText}`);
-      }
-      const data = await response.json();
-      console.log('PushLap Signup Tracked Successfully:', data);
+      await postAffiliateEvent('signup', body);
+      console.log('PushLap Signup Tracked Successfully');
     } catch (err) {
       console.error('PushLap Tracking Error:', err);
     }
@@ -64,12 +62,6 @@ export const affiliateService = {
    * Matches body structure: { referralId, externalId, externalInvoiceId, totalEarned, commissionRate? }
    */
   trackSale: async (user: User, amount: number, invoiceId: string, commissionRate?: number) => {
-    // If no API key configured, skip
-    if (!PUSHLAP_API_KEY) {
-        console.warn("PushLap API Key missing. Skipping sale tracking.");
-        return;
-    }
-
     const body: any = {
       referralId: user.email, // The email of the user who bought the item (links to the referral)
       externalId: user.uid,   // Optional external user ID
@@ -82,23 +74,9 @@ export const affiliateService = {
         body.commissionRate = commissionRate;
     }
 
-    const options = {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${PUSHLAP_API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    };
-
     try {
-      const response = await fetch('https://www.pushlapgrowth.com/api/v1/sales', options);
-      if (!response.ok) {
-          const errText = await response.text();
-          throw new Error(`PushLap API Error (${response.status}): ${errText}`);
-      }
-      const data = await response.json();
-      console.log('PushLap Sale Tracked:', data);
+      await postAffiliateEvent('sale', body);
+      console.log('PushLap Sale Tracked');
     } catch (err) {
       console.error('PushLap Sale Error:', err);
     }
