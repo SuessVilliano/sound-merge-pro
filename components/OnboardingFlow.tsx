@@ -4,7 +4,7 @@ import {
     Zap, Globe, Shield, Mic2, Star, LayoutDashboard, Loader2, X, MessageSquare, Users,
     Radio, Camera, Instagram, Facebook, Twitter, Link as LinkIcon, Save, Sparkles, Server,
     FileText, PenTool, ImagePlus, Check, Building2, Users2, Youtube, Video, Globe2, Linkedin, Chrome,
-    ChevronRight, Search, Heart, Signal, Activity, RefreshCw
+    ChevronRight, Search, Heart, Signal, Activity, RefreshCw, Library, UploadCloud
 } from 'lucide-react';
 import { User } from '../types';
 import { VIEWS } from '../constants';
@@ -17,11 +17,12 @@ interface OnboardingFlowProps {
     onDismiss: () => void;
 }
 
-type Step = 'welcome' | 'role' | 'search' | 'legal' | 'identity' | 'visual-assets' | 'socials' | 'core-activation' | 'staff' | 'processing';
+type Step = 'welcome' | 'path' | 'role' | 'search' | 'legal' | 'identity' | 'visual-assets' | 'socials' | 'core-activation' | 'staff' | 'processing';
 
 export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete, onDismiss }) => {
     const [step, setStep] = useState<Step>('welcome');
     const [role, setRole] = useState<User['role']>('artist');
+    const [onboardingMode, setOnboardingMode] = useState<NonNullable<User['onboardingMode']>>('hybrid');
     const [selectedStaff, setSelectedStaff] = useState<string[]>(['mgr', 'mkt', 'dst']);
     
     // Search Artist State
@@ -54,15 +55,15 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
 
     const [processingStep, setProcessingStep] = useState(0);
     const processingMessages = [
-        "Initializing Sound Merge Core...",
-        "Establishing Institutional Rights Rails...",
-        "Indexing Global Social Footprint...",
-        "Neural Crawling: Analyzing YouTube & Web References...",
-        "Training Custom Marketing Persona...",
-        "Deploying Dedicated Identity Ledger...",
-        "Syncing Voice DNA Protection...",
-        "Assigning Professional AI Staff...",
-        "System Ready. Welcome to your digital office."
+        "Saving your Sound Merge profile...",
+        "Preparing your catalog workspace...",
+        "Connecting your selected business rails...",
+        "Preparing metadata and rights checklists...",
+        "Setting your artist journey...",
+        "Configuring your selected AI staff...",
+        "Preparing your dashboard...",
+        "Checking your integrations...",
+        "Sound Merge is ready."
     ];
 
     useEffect(() => {
@@ -122,6 +123,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
             { 
                 onboardingCompleted: true,
                 tourCompleted: false,
+                onboardingMode,
                 role,
                 bio,
                 location,
@@ -133,9 +135,13 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
                 hasSignedLegal: true,
                 legalSignedDate: new Date().toISOString()
             }, 
-            role === 'label_exec' 
-                ? [VIEWS.DASHBOARD, VIEWS.AR_DASHBOARD, VIEWS.ANALYTICS, VIEWS.DISTRIBUTION]
-                : [VIEWS.DASHBOARD, VIEWS.STAFF, VIEWS.STUDIO, VIEWS.BRAND]
+            role === 'label_exec'
+                ? [VIEWS.DASHBOARD, VIEWS.MY_MUSIC, VIEWS.RELEASE_RAILS, VIEWS.CATALOG_IDENTITY, VIEWS.ANALYTICS]
+                : onboardingMode === 'existing_catalog'
+                    ? [VIEWS.DASHBOARD, VIEWS.MY_MUSIC, VIEWS.CATALOG_IDENTITY, VIEWS.RELEASE_RAILS, VIEWS.REVENUE, VIEWS.CRM]
+                    : onboardingMode === 'create_new'
+                        ? [VIEWS.DASHBOARD, VIEWS.STUDIO, VIEWS.VISUAL_STUDIO, VIEWS.RELEASE_RAILS, VIEWS.CATALOG_IDENTITY]
+                        : [VIEWS.DASHBOARD, VIEWS.MY_MUSIC, VIEWS.STUDIO, VIEWS.VISUAL_STUDIO, VIEWS.RELEASE_RAILS, VIEWS.CATALOG_IDENTITY, VIEWS.REVENUE]
         );
     };
 
@@ -161,28 +167,83 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
             </p>
             <div className="flex flex-col items-center gap-4">
                 <button 
-                    onClick={() => setStep('role')}
+                    onClick={() => setStep('path')}
                     className="bg-slate-950 dark:bg-white text-white dark:text-slate-900 px-12 py-5 rounded-full font-black uppercase tracking-[0.2em] text-xs hover:scale-105 transition-transform flex items-center gap-3 mx-auto shadow-2xl"
                 >
-                    Initialize Profile <ArrowRight className="w-5 h-5" />
+                    Get Started <ArrowRight className="w-5 h-5" />
                 </button>
+            </div>
+        </div>
+    );
+
+    const renderPath = () => (
+        <div className="animate-in fade-in slide-in-from-right-8 duration-500 max-w-5xl mx-auto py-10">
+            <div className="text-center mb-12">
+                <div className="text-[10px] font-black uppercase tracking-[0.24em] text-cyan-500 mb-3">Start Where You Are</div>
+                <h2 className="text-4xl md:text-6xl font-display font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">
+                    What Are You Bringing In?
+                </h2>
+                <p className="text-slate-500 dark:text-slate-400 text-lg mt-3 max-w-2xl mx-auto">
+                    Sound Merge works whether you make music with AI, record in Pro Tools, already have ten albums, or want all of it in one place.
+                </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-5">
+                {[
+                    {
+                        id: 'create_new',
+                        title: 'I Want to Create',
+                        icon: Wand2,
+                        desc: 'Start from lyrics, a voice memo, a beat idea, uploaded audio, or AI-assisted creation.'
+                    },
+                    {
+                        id: 'existing_catalog',
+                        title: 'I Already Have Music',
+                        icon: Library,
+                        desc: 'Bring masters, albums, codes, store links and old releases together without using AI music generation.'
+                    },
+                    {
+                        id: 'hybrid',
+                        title: 'Both',
+                        icon: UploadCloud,
+                        desc: 'Sync the catalog you already own and keep creating new releases with any workflow you choose.'
+                    }
+                ].map(option => (
+                    <button
+                        key={option.id}
+                        onClick={() => { setOnboardingMode(option.id as NonNullable<User['onboardingMode']>); setStep('role'); }}
+                        className="text-left rounded-[2rem] border-2 border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-7 hover:border-cyan-500 hover:-translate-y-1 transition-all shadow-sm"
+                    >
+                        <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 flex items-center justify-center mb-6">
+                            <option.icon className="w-7 h-7 text-cyan-500" />
+                        </div>
+                        <h3 className="text-xl font-black text-slate-900 dark:text-white uppercase tracking-tight">{option.title}</h3>
+                        <p className="text-sm text-slate-500 mt-3 leading-relaxed">{option.desc}</p>
+                        <div className="mt-6 text-[10px] font-black uppercase tracking-widest text-cyan-500 flex items-center gap-2">
+                            Choose This Path <ArrowRight className="w-4 h-4" />
+                        </div>
+                    </button>
+                ))}
             </div>
         </div>
     );
 
     const renderRole = () => (
         <div className="animate-in fade-in slide-in-from-right-8 duration-500 max-w-3xl mx-auto py-10">
-            <h2 className="text-4xl md:text-6xl font-display font-black text-slate-900 dark:text-white mb-3 text-center uppercase tracking-tighter italic">Operational Scale</h2>
-            <p className="text-slate-500 dark:text-slate-400 text-center mb-12 text-lg">Select the tier of institutional infrastructure you require.</p>
+            <h2 className="text-4xl md:text-6xl font-display font-black text-slate-900 dark:text-white mb-3 text-center uppercase tracking-tighter italic">Who Are We Setting Up?</h2>
+            <p className="text-slate-500 dark:text-slate-400 text-center mb-12 text-lg">Choose the workspace that matches how you run music.</p>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {[
-                    { id: 'artist', label: 'Indie Professional', icon: Mic2, desc: 'Single profile deployment for independent creators. Full access to AI Staff and Distribution.' },
-                    { id: 'label_exec', label: 'Enterprise Label', icon: Building2, desc: 'Multi-artist management for agencies and labels. Specialized A&R and bulk metadata tools.' },
+                    { id: 'artist', label: 'Independent Artist', icon: Mic2, desc: 'One artist profile for creation, catalog, distribution, rights, marketing and money tracking. AI tools are optional.' },
+                    { id: 'label_exec', label: 'Label / Management', icon: Building2, desc: 'Roster-level catalog, release, analytics, metadata and business operations for teams.' },
                 ].map((option) => (
                     <button
                         key={option.id}
-                        onClick={() => { setRole(option.id as any); setStep('search'); }}
+                        onClick={() => {
+                            setRole(option.id as any);
+                            setStep(onboardingMode === 'create_new' ? 'legal' : 'search');
+                        }}
                         className="bg-white dark:bg-slate-900 hover:border-cyan-500 border-2 border-slate-200 dark:border-slate-800 p-10 rounded-[3rem] text-left group transition-all shadow-sm hover:shadow-2xl"
                     >
                         <div className="bg-slate-100 dark:bg-slate-950 w-20 h-20 rounded-3xl flex items-center justify-center mb-8 group-hover:bg-cyan-500/10 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
@@ -468,6 +529,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
         <div className="fixed inset-0 z-[100] bg-slate-50 dark:bg-slate-950 flex flex-col items-center justify-start md:justify-center p-6 overflow-y-auto custom-scrollbar transition-colors duration-500">
             <div className="w-full max-w-6xl">
                 {step === 'welcome' && renderWelcome()}
+                {step === 'path' && renderPath()}
                 {step === 'role' && renderRole()}
                 {step === 'search' && renderSearch()}
                 
@@ -540,7 +602,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
                             onClick={() => setStep('processing')} 
                             className="w-full py-6 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-[2.5rem] font-display font-black uppercase tracking-[0.2em] text-sm shadow-[0_0_50px_rgba(6,182,212,0.3)] transition-all hover:scale-[1.01] active:scale-[0.99] flex items-center justify-center gap-3"
                         >
-                            Complete Profile & Enter Studio
+                            Complete Setup & Open Sound Merge
                         </button>
                     </div>
                 )}
@@ -552,7 +614,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ user, onComplete
                             <div className="absolute inset-0 flex items-center justify-center"><Loader2 className="w-12 h-12 text-cyan-600 dark:text-cyan-400 animate-pulse" /></div>
                         </div>
                         <h2 className="text-3xl font-display font-black text-slate-900 dark:text-white uppercase tracking-tighter italic">{processingMessages[processingStep]}</h2>
-                        <p className="text-slate-500 font-medium mt-4 text-lg">Synchronizing profile with global industry infrastructure...</p>
+                        <p className="text-slate-500 font-medium mt-4 text-lg">Saving your workspace and selected artist-business setup...</p>
                     </div>
                 )}
             </div>
