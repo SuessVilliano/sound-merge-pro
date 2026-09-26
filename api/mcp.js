@@ -56,6 +56,18 @@ const toolDefinitions = [
     },required:["query"],additionalProperties:false}
   },
   {
+    name:"generate_artwork",
+    description:"Generate professional release artwork with Nano Banana 2 using Gemini 3.1 Flash Image. Returns a base64 data URL; the client should persist the chosen image to Sound Merge artwork storage.",
+    inputSchema:{type:"object",properties:{
+      prompt:{type:"string"},
+      title:{type:"string"},
+      artistName:{type:"string"},
+      aspectRatio:{type:"string",enum:["1:1","4:5","16:9"]},
+      imageSize:{type:"string",enum:["1K","2K","4K"]},
+      referenceImages:{type:"array",items:{type:"string"},maxItems:5}
+    },required:["prompt"],additionalProperties:false}
+  },
+  {
     name:"higgsfield_video_route",
     description:"Return the best Higgsfield path for a music-video task: web, official MCP, or API, including official setup URLs.",
     inputSchema:{type:"object",properties:{
@@ -199,6 +211,64 @@ function routeCapability(capability){
   return providers.filter(p=>ids.includes(p.id));
 }
 
+
+const extractImageFromInteraction = (value, seen = new Set()) => {
+  if (!value || typeof value !== "object" || seen.has(value)) return null;
+  seen.add(value);
+  const mime = value.mime_type || value.mimeType || value.media_type || value.mediaType;
+  if (typeof value.data === "string" && typeof mime === "string" && mime.startsWith("image/")) {
+    return { data:value.data, mimeType:mime };
+  }
+  for (const child of Object.values(value)) {
+    if (child && typeof child === "object") {
+      const found = extractImageFromInteraction(child, seen);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
+async function generateArtwork(args){
+  const apiKey=process.env.GEMINI_API_KEY;
+  if(!apiKey) throw new Error("GEMINI_API_KEY is not configured.");
+  const model=process.env.GEMINI_IMAGE_MODEL || "gemini-3.1-flash-image";
+  const input=[{
+    type:"text",
+    text:[
+      "Create professional commercial music release artwork.",
+      args.title ? `Release title: "${args.title}".` : "",
+      args.artistName ? `Artist: "${args.artistName}".` : "",
+      `Creative direction: ${args.prompt}`,
+      "Avoid watermarks, platform logos, barcodes and fake legal text. Return only the artwork image."
+    ].filter(Boolean).join("\n")
+  }];
+
+  for(const raw of Array.isArray(args.referenceImages) ? args.referenceImages.slice(0,5) : []){
+    const match=String(raw).match(/^data:([^;]+);base64,(.+)$/);
+    if(match) input.push({type:"image",mime_type:match[1],data:match[2]});
+  }
+
+  const response=await fetch("https://generativelanguage.googleapis.com/v1beta/interactions",{
+    method:"POST",
+    headers:{"x-goog-api-key":apiKey,"Content-Type":"application/json"},
+    body:JSON.stringify({
+      model,
+      input,
+      response_format:{
+        type:"image",
+        mime_type:"image/png",
+        aspect_ratio:args.aspectRatio || "1:1",
+        image_size:args.imageSize || "2K"
+      }
+    })
+  });
+  const data=await response.json();
+  if(!response.ok) throw new Error(data?.error?.message || "Artwork generation failed.");
+  const image=extractImageFromInteraction(data);
+  if(!image?.data) throw new Error("Nano Banana returned no image.");
+  return {model,mimeType:image.mimeType,dataUrl:`data:${image.mimeType};base64,${image.data}`};
+}
+
 async function createMusicJob(args){
   if(args.provider==="mureka"){
     const apiKey=process.env.MUREKA_API_KEY;
@@ -314,6 +384,8 @@ async function callTool(name,args){
       return textContent(await geminiPromptPack(args));
     case "musicbrainz_search":
       return textContent(await musicBrainzSearch(args));
+    case "generate_artwork":
+      return textContent(await generateArtwork(args));
     case "higgsfield_video_route":{
       const mode=args.wantsInAppGeneration ? "api" : (args.wantsExistingPlanCredits ? "mcp" : "web");
       return textContent({
@@ -351,7 +423,7 @@ export default async function handler(req,res){
     return res.status(200).json(rpcResult(id,{
       protocolVersion:PROTOCOL_VERSION,
       capabilities:{tools:{listChanged:false}},
-      serverInfo:{name:"sound-merge",version:"3.1.0"},
+      serverInfo:{name:"sound-merge",version:"3.2.0"},
       instructions:"Sound Merge centralizes independent-artist creation, media, release, rights, analytics and revenue workflows. Use API providers when deterministic software access exists, MCP for agent-native providers, and approval-gated browser workflows for portals without verified APIs."
     }));
   }
